@@ -474,10 +474,14 @@
       return;
     }
 
-    // Upgrade to 'artist' the moment someone actually uploads something —
-    // this is the right trigger for the label, not just logging in (login.html
-    // defaults everyone to 'listener' since it's shared with the browse/favorites flow).
-    await supabase.from('profiles').update({ role: 'artist' }).eq('id', user.id).neq('role', 'artist');
+    // This page is artist-only — account type is chosen explicitly at login,
+    // not auto-assigned just by visiting this page.
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+    if (!profile || profile.role !== 'artist') {
+      setStatus('This page is for artists. Log in with an Artist account to upload.', true);
+      submitBtn.disabled = false;
+      return;
+    }
 
     const title = document.getElementById('title').value.trim();
     const genre = document.getElementById('genre').value;

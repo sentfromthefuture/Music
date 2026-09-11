@@ -134,6 +134,11 @@
       gate.innerHTML = 'Please <a href="login.html">log in</a> first.';
       return;
     }
+    const { data: roleCheck } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+    if (!roleCheck || roleCheck.role !== 'artist') {
+      gate.textContent = 'This page is for artists only.';
+      return;
+    }
     currentUser = user;
     gate.classList.add('hidden');
     content.classList.remove('hidden');

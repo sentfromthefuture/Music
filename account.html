@@ -80,6 +80,11 @@
       <a href="balance.html" class="link-row">My Balance & Withdrawals →</a>
     </div>
 
+    <div class="card hidden" id="become-artist-card">
+      <p style="font-size:13px;color:var(--ink-muted);margin:0 0 10px;">Want to sell your own tracks or beats?</p>
+      <button type="button" id="become-artist-btn" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:600;cursor:pointer;">Become an Artist</button>
+    </div>
+
     <h2>Favorites</h2>
     <div id="fav-grid" class="fav-grid"><p class="empty-state">No favorites yet.</p></div>
   </div>
@@ -120,6 +125,13 @@
 
     if (profile?.role === 'artist') {
       document.getElementById('artist-links').classList.remove('hidden');
+    } else {
+      const becomeCard = document.getElementById('become-artist-card');
+      becomeCard.classList.remove('hidden');
+      document.getElementById('become-artist-btn').addEventListener('click', async () => {
+        const { error } = await supabase.from('profiles').update({ role: 'artist' }).eq('id', user.id);
+        if (!error) window.location.reload();
+      });
     }
 
     const [{ count: downloadsCount }, { count: purchasesCount }] = await Promise.all([

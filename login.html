@@ -88,6 +88,11 @@
   <h1>Log in</h1>
   <p class="sub">Enter your phone number to get a one-time code.</p>
 
+  <div class="card" id="type-card" style="padding:6px;display:flex;gap:6px;">
+    <button type="button" class="type-toggle-btn active" data-role="listener" style="flex:1;padding:10px;border:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:600;cursor:pointer;">I'm a Listener</button>
+    <button type="button" class="type-toggle-btn" data-role="artist" style="flex:1;padding:10px;border:none;border-radius:8px;background:var(--surface-alt);color:var(--ink-muted);font-size:13px;font-weight:600;cursor:pointer;">I'm an Artist</button>
+  </div>
+
   <!-- Step 1: phone number -->
   <div id="phone-card" class="card">
     <label for="phone-input">Phone number</label>
@@ -130,6 +135,21 @@
   const otpStatus = document.getElementById('otp-status');
 
   let currentPhone = '';
+  let selectedRole = 'listener';
+
+  document.querySelectorAll('.type-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.type-toggle-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = 'var(--surface-alt)';
+        b.style.color = 'var(--ink-muted)';
+      });
+      btn.classList.add('active');
+      btn.style.background = 'var(--accent)';
+      btn.style.color = 'var(--accent-ink)';
+      selectedRole = btn.dataset.role;
+    });
+  });
 
   // Normalizes 0XXXXXXXXX, XXXXXXXXX, 260XXXXXXXXX, +260XXXXXXXXX -> +260XXXXXXXXX
   function normalizeZambianPhone(raw) {
@@ -202,24 +222,27 @@
       return;
     }
 
-    // First login for this user — make sure they have a profile row.
-    // Defaults to 'listener' since this login page is now used by both
-    // listeners (e.g. via the favorite-heart prompt) and artists; a
-    // profile is upgraded to 'artist' at the moment they actually upload
-    // something (see upload.html), not just from logging in.
+    // First login for this user — make sure they have a profile row,
+    // using whichever account type they selected above. Returning users
+    // keep their existing stored role regardless of what's selected here
+    // (the toggle only decides brand-new signups).
     const user = data.user;
     const { data: existingProfile } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, role')
       .eq('id', user.id)
       .maybeSingle();
 
+    let finalRole = 'listener';
     if (!existingProfile) {
-      await supabase.from('profiles').insert({ id: user.id, role: 'listener' });
+      await supabase.from('profiles').insert({ id: user.id, role: selectedRole });
+      finalRole = selectedRole;
+    } else {
+      finalRole = existingProfile.role;
     }
 
     otpStatus.textContent = '';
-    showSuccess();
+    showSuccess(finalRole);
   });
 
   document.getElementById('change-number-btn').addEventListener('click', () => {
@@ -230,13 +253,21 @@
   });
 
   document.getElementById('go-to-upload-btn').addEventListener('click', () => {
-    window.location.href = 'upload.html';
+    window.location.href = document.getElementById('go-to-upload-btn').dataset.href || 'browse.html';
   });
 
-  function showSuccess() {
+  function showSuccess(role) {
     phoneCard.classList.add('hidden');
     otpCard.classList.add('hidden');
     successCard.classList.remove('hidden');
+    const goBtn = document.getElementById('go-to-upload-btn');
+    if (role === 'artist') {
+      goBtn.textContent = 'Go to Upload';
+      goBtn.dataset.href = 'upload.html';
+    } else {
+      goBtn.textContent = 'Go to Browse';
+      goBtn.dataset.href = 'browse.html';
+    }
   }
 </script>
 </body>

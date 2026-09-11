@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Details — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --danger: #b3261e;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+  a.back { font-size: 13px; color: var(--ink-muted); text-decoration: none; display: inline-block; margin-bottom: 14px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .cover {
+    aspect-ratio: 1; border-radius: var(--radius); background: var(--surface-alt);
+    display: flex; align-items: center; justify-content: center; color: var(--ink-muted); font-size: 40px;
+    background-size: cover; background-position: center; margin-bottom: 14px; position: relative;
+  }
+  .heart-btn {
+    position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,0.9); border: none; display: flex; align-items: center; justify-content: center;
+    font-size: 17px; cursor: pointer; color: var(--ink-muted);
+  }
+  .heart-btn.favorited { color: var(--danger); }
+
+  .title { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
+  .meta { font-size: 13px; color: var(--ink-muted); margin: 0 0 16px; }
+
+  audio { width: 100%; margin-bottom: 16px; }
+
+  .price { font-size: 22px; font-weight: 700; margin: 0 0 14px; }
+  .price.free { color: var(--success); }
+
+  a.action-btn, button.action-btn {
+    display: block; width: 100%; text-align: center; padding: 12px; border: none; border-radius: 8px;
+    background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
+  }
+
+  .gate-msg, .empty-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="browse.html" class="back">← Back to Browse</a>
+
+  <div id="loading" class="gate-msg">Loading…</div>
+
+  <div id="content" class="hidden card">
+    <div class="cover" id="cover">
+      <button type="button" class="heart-btn" id="heart-btn">♡</button>
+      <span id="cover-icon"></span>
+    </div>
+    <p class="title" id="item-title">—</p>
+    <p class="meta" id="item-meta">—</p>
+
+    <audio id="preview-audio" controls class="hidden"></audio>
+
+    <p class="price" id="price-display">—</p>
+    <a href="#" id="action-btn" class="action-btn">—</a>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const params = new URLSearchParams(window.location.search);
+  const itemType = params.get('type');
+  const itemId = params.get('id');
+
+  const loading = document.getElementById('loading');
+  const content = document.getElementById('content');
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  (async () => {
+    if (!itemType || !itemId || !['track', 'beat'].includes(itemType)) {
+      loading.textContent = 'Invalid or missing item.';
+      return;
+    }
+
+    const table = itemType === 'beat' ? 'beats' : 'tracks';
+    const { data: item, error } = await supabase.from(table).select('*').eq('id', itemId).eq('status', 'approved').maybeSingle();
+    if (error || !item) {
+      loading.textContent = 'This item is not available.';
+      return;
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', item.owner_id).maybeSingle();
+    const artistName = profile?.display_name || 'Unknown artist';
+
+    loading.classList.add('hidden');
+    content.classList.remove('hidden');
+
+    document.getElementById('item-title').textContent = item.title;
+    document.getElementById('item-meta').textContent = `${artistName} · ${item.genre || ''}${itemType === 'beat' ? ' · Beat' : ''}`;
+
+    const coverEl = document.getElementById('cover');
+    if (item.cover_url) {
+      coverEl.style.backgroundImage = `url(${item.cover_url})`;
+    } else {
+      document.getElementById('cover-icon').textContent = itemType === 'beat' ? '♫' : '♪';
+    }
+
+    const isFreeTrack = itemType === 'track' && item.is_free;
+    const audioEl = document.getElementById('preview-audio');
+    const priceDisplay = document.getElementById('price-display');
+    const actionBtn = document.getElementById('action-btn');
+
+    if (isFreeTrack) {
+      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.file_path).data.publicUrl;
+      audioEl.src = publicUrl;
+      audioEl.classList.remove('hidden');
+      priceDisplay.textContent = 'Free';
+      priceDisplay.classList.add('free');
+      actionBtn.textContent = 'Download';
+      actionBtn.href = publicUrl;
+      actionBtn.setAttribute('download', '');
+      actionBtn.addEventListener('click', async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        supabase.from('downloads').insert({ user_id: user ? user.id : null, track_id: item.id }).then(() => {});
+      });
+    } else if (itemType === 'beat' && item.preview_path) {
+      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.preview_path).data.publicUrl;
+      audioEl.src = publicUrl;
+      audioEl.classList.remove('hidden');
+      priceDisplay.textContent = `K${item.price}`;
+      actionBtn.textContent = 'Buy';
+      actionBtn.href = `checkout.html?type=${itemType}&id=${item.id}`;
+    } else {
+      // Paid track — no preview available for tracks currently
+      priceDisplay.textContent = `K${item.price}`;
+      actionBtn.textContent = 'Buy';
+      actionBtn.href = `checkout.html?type=${itemType}&id=${item.id}`;
+    }
+
+    // Favorites
+    const heartBtn = document.getElementById('heart-btn');
+    const { data: { user } } = await supabase.auth.getUser();
+    let isFavorited = false;
+    if (user) {
+      const { data: fav } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('item_id', item.id).eq('item_type', itemType).maybeSingle();
+      isFavorited = !!fav;
+      heartBtn.textContent = isFavorited ? '♥' : '♡';
+      heartBtn.classList.toggle('favorited', isFavorited);
+    }
+    heartBtn.addEventListener('click', async () => {
+      if (!user) {
+        if (confirm('Log in to save favorites. Go to login now?')) window.location.href = 'login.html';
+        return;
+      }
+      heartBtn.disabled = true;
+      if (isFavorited) {
+        const { error } = await supabase.from('favorites').delete().eq('user_id', user.id).eq('item_id', item.id).eq('item_type', itemType);
+        if (!error) { isFavorited = false; heartBtn.textContent = '♡'; heartBtn.classList.remove('favorited'); }
+      } else {
+        const { error } = await supabase.from('favorites').insert({ user_id: user.id, item_id: item.id, item_type: itemType });
+        if (!error) { isFavorited = true; heartBtn.textContent = '♥'; heartBtn.classList.add('favorited'); }
+      }
+      heartBtn.disabled = false;
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Browse — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --danger: #b3261e;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px 60px; }
+  .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .sub { font-size: 13px; color: var(--ink-muted); margin: 0 0 16px; }
+  #account-link {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt);
+    display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--ink-muted); font-size: 14px;
+  }
+
+  .chips { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 2px; }
+  .chip {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    background: var(--surface-alt); border: 1px solid var(--border); color: var(--ink-muted); cursor: pointer; white-space: nowrap;
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .item-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; text-decoration: none; color: inherit; display: block; position: relative; }
+  .item-cover {
+    aspect-ratio: 1; background: var(--surface-alt); display: flex; align-items: center; justify-content: center;
+    color: var(--ink-muted); font-size: 26px; background-size: cover; background-position: center;
+  }
+  .heart-btn {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,0.85); border: none; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; cursor: pointer; color: var(--ink-muted);
+  }
+  .heart-btn.favorited { color: var(--danger); }
+  .item-info { padding: 8px; }
+  .item-title { font-size: 13px; font-weight: 500; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-artist { font-size: 11px; color: var(--ink-muted); margin: 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-price { font-size: 11px; font-weight: 600; }
+  .item-price.free { color: var(--success); }
+
+  .empty-state, .loading-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header-row">
+    <h1>Browse</h1>
+    <a href="account.html" id="account-link">👤</a>
+  </div>
+  <p class="sub">Tracks and beats from local artists.</p>
+
+  <div class="chips" id="genre-chips">
+    <button type="button" class="chip active" data-genre="all">All</button>
+  </div>
+
+  <div class="grid" id="grid">
+    <p class="loading-state">Loading…</p>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const grid = document.getElementById('grid');
+  const genreChips = document.getElementById('genre-chips');
+
+  let allItems = [];
+  let favoriteKeys = new Set();
+  let currentUserId = null;
+  let activeGenre = 'all';
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  (async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      currentUserId = user.id;
+      const { data: favs } = await supabase.from('favorites').select('item_id, item_type').eq('user_id', user.id);
+      (favs || []).forEach(f => favoriteKeys.add(`${f.item_type}-${f.item_id}`));
+    }
+
+    const [{ data: tracks }, { data: beats }] = await Promise.all([
+      supabase.from('tracks').select('*').eq('status', 'approved'),
+      supabase.from('beats').select('*').eq('status', 'approved'),
+    ]);
+
+    // Fetch artist display names in one batch
+    const ownerIds = [...new Set([...(tracks || []), ...(beats || [])].map(i => i.owner_id))];
+    const { data: profiles } = ownerIds.length ? await supabase.from('profiles').select('id, display_name').in('id', ownerIds) : { data: [] };
+    const nameMap = new Map((profiles || []).map(p => [p.id, p.display_name || 'Unknown artist']));
+
+    allItems = [
+      ...(tracks || []).map(t => ({ ...t, itemType: 'track', artistName: nameMap.get(t.owner_id) })),
+      ...(beats || []).map(b => ({ ...b, itemType: 'beat', artistName: nameMap.get(b.owner_id) })),
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    buildGenreChips();
+    renderGrid();
+  })();
+
+  function buildGenreChips() {
+    const genres = [...new Set(allItems.map(i => i.genre).filter(Boolean))];
+    for (const genre of genres) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip';
+      chip.dataset.genre = genre;
+      chip.textContent = genre;
+      genreChips.appendChild(chip);
+    }
+    genreChips.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeGenre = chip.dataset.genre;
+      renderGrid();
+    });
+  }
+
+  function renderGrid() {
+    const items = activeGenre === 'all' ? allItems : allItems.filter(i => i.genre === activeGenre);
+    grid.innerHTML = '';
+    if (items.length === 0) {
+      grid.innerHTML = '<p class="empty-state">Nothing here yet.</p>';
+      return;
+    }
+    for (const item of items) {
+      const key = `${item.itemType}-${item.id}`;
+      const isFavorited = favoriteKeys.has(key);
+      const priceLabel = item.itemType === 'track' && item.is_free ? 'Free' : `K${item.price}`;
+      const priceClass = item.itemType === 'track' && item.is_free ? 'free' : '';
+
+      const card = document.createElement('a');
+      card.className = 'item-card';
+      card.href = `detail.html?type=${item.itemType}&id=${item.id}`;
+      card.innerHTML = `
+        <div class="item-cover" style="${item.cover_url ? `background-image:url(${item.cover_url})` : ''}">${item.cover_url ? '' : (item.itemType === 'beat' ? '♫' : '♪')}</div>
+        <button type="button" class="heart-btn ${isFavorited ? 'favorited' : ''}" data-key="${key}" data-type="${item.itemType}" data-id="${item.id}">${isFavorited ? '♥' : '♡'}</button>
+        <div class="item-info">
+          <p class="item-title">${escapeHtml(item.title)}</p>
+          <p class="item-artist">${escapeHtml(item.artistName)}</p>
+          <p class="item-price ${priceClass}">${priceLabel}</p>
+        </div>
+      `;
+      card.querySelector('.heart-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleFavorite(item.itemType, item.id, e.currentTarget);
+      });
+      grid.appendChild(card);
+    }
+  }
+
+  async function toggleFavorite(itemType, itemId, btn) {
+    if (!currentUserId) {
+      if (confirm('Log in to save favorites. Go to login now?')) window.location.href = 'login.html';
+      return;
+    }
+    const key = `${itemType}-${itemId}`;
+    btn.disabled = true;
+    if (favoriteKeys.has(key)) {
+      const { error } = await supabase.from('favorites').delete().eq('user_id', currentUserId).eq('item_id', itemId).eq('item_type', itemType);
+      if (!error) {
+        favoriteKeys.delete(key);
+        btn.classList.remove('favorited');
+        btn.textContent = '♡';
+      }
+    } else {
+      const { error } = await supabase.from('favorites').insert({ user_id: currentUserId, item_id: itemId, item_type: itemType });
+      if (!error) {
+        favoriteKeys.add(key);
+        btn.classList.add('favorited');
+        btn.textContent = '♥';
+      }
+    }
+    btn.disabled = false;
+  }
+</script>
+</body>
+</html>

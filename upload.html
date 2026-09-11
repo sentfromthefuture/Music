@@ -474,6 +474,11 @@
       return;
     }
 
+    // Upgrade to 'artist' the moment someone actually uploads something —
+    // this is the right trigger for the label, not just logging in (login.html
+    // defaults everyone to 'listener' since it's shared with the browse/favorites flow).
+    await supabase.from('profiles').update({ role: 'artist' }).eq('id', user.id).neq('role', 'artist');
+
     const title = document.getElementById('title').value.trim();
     const genre = document.getElementById('genre').value;
     const bpm = document.getElementById('bpm').value || null;

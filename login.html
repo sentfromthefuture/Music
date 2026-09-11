@@ -203,7 +203,10 @@
     }
 
     // First login for this user — make sure they have a profile row.
-    // This login page is the artist-facing entry point, so default role is 'artist'.
+    // Defaults to 'listener' since this login page is now used by both
+    // listeners (e.g. via the favorite-heart prompt) and artists; a
+    // profile is upgraded to 'artist' at the moment they actually upload
+    // something (see upload.html), not just from logging in.
     const user = data.user;
     const { data: existingProfile } = await supabase
       .from('profiles')
@@ -212,7 +215,7 @@
       .maybeSingle();
 
     if (!existingProfile) {
-      await supabase.from('profiles').insert({ id: user.id, role: 'artist' });
+      await supabase.from('profiles').insert({ id: user.id, role: 'listener' });
     }
 
     otpStatus.textContent = '';

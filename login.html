@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log in — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--ink-muted); margin: 0 0 20px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="tel"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+  }
+
+  button.primary {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 18px;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  button.link {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--ink-muted);
+    font-size: 13px;
+    padding: 10px 0 0;
+    cursor: pointer;
+  }
+
+  .status-line { font-size: 12px; color: var(--ink-muted); margin-top: 8px; min-height: 16px; }
+  .status-line.error { color: #b3261e; }
+
+  .success-card { text-align: center; }
+  .success-card p { font-size: 14px; color: var(--success); font-weight: 500; margin: 0 0 14px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Log in</h1>
+  <p class="sub">Enter your phone number to get a one-time code.</p>
+
+  <!-- Step 1: phone number -->
+  <div id="phone-card" class="card">
+    <label for="phone-input">Phone number</label>
+    <input type="tel" id="phone-input" placeholder="0971234567" />
+    <button type="button" class="primary" id="send-code-btn">Send code</button>
+    <p class="status-line" id="phone-status"></p>
+  </div>
+
+  <!-- Step 2: OTP code -->
+  <div id="otp-card" class="card hidden">
+    <label for="otp-input">Enter the 6-digit code</label>
+    <input type="text" id="otp-input" inputmode="numeric" maxlength="6" placeholder="123456" />
+    <button type="button" class="primary" id="verify-btn">Verify</button>
+    <button type="button" class="link" id="change-number-btn">Use a different number</button>
+    <p class="status-line" id="otp-status"></p>
+  </div>
+
+  <!-- Success -->
+  <div id="success-card" class="card success-card hidden">
+    <p>You're logged in.</p>
+    <button type="button" class="primary" id="go-to-upload-btn">Go to Upload</button>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const phoneCard = document.getElementById('phone-card');
+  const otpCard = document.getElementById('otp-card');
+  const successCard = document.getElementById('success-card');
+
+  const phoneInput = document.getElementById('phone-input');
+  const otpInput = document.getElementById('otp-input');
+  const phoneStatus = document.getElementById('phone-status');
+  const otpStatus = document.getElementById('otp-status');
+
+  let currentPhone = '';
+
+  // Normalizes 0XXXXXXXXX, XXXXXXXXX, 260XXXXXXXXX, +260XXXXXXXXX -> +260XXXXXXXXX
+  function normalizeZambianPhone(raw) {
+    const cleaned = raw.trim().replace(/[\s\-()]/g, '');
+    let normalized = null;
+    if (cleaned.startsWith('+260')) {
+      normalized = cleaned;
+    } else if (cleaned.startsWith('260')) {
+      normalized = '+' + cleaned;
+    } else if (cleaned.startsWith('0')) {
+      normalized = '+260' + cleaned.slice(1);
+    } else if (/^\d{9}$/.test(cleaned)) {
+      normalized = '+260' + cleaned;
+    }
+    // A valid normalized Zambian number is +260 followed by exactly 9 digits
+    if (normalized && /^\+260\d{9}$/.test(normalized)) return normalized;
+    return null;
+  }
+
+  // If already logged in, skip straight to success
+  (async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) showSuccess();
+  })();
+
+  document.getElementById('send-code-btn').addEventListener('click', async () => {
+    const rawPhone = phoneInput.value.trim();
+    const phone = normalizeZambianPhone(rawPhone);
+    if (!phone) {
+      phoneStatus.textContent = 'Enter a valid Zambian number, e.g. 0971234567 or +260971234567';
+      phoneStatus.classList.add('error');
+      return;
+    }
+    phoneStatus.textContent = 'Sending code…';
+    phoneStatus.classList.remove('error');
+
+    const { error } = await supabase.auth.signInWithOtp({ phone });
+    if (error) {
+      phoneStatus.textContent = error.message;
+      phoneStatus.classList.add('error');
+      return;
+    }
+
+    currentPhone = phone;
+    phoneStatus.textContent = '';
+    phoneCard.classList.add('hidden');
+    otpCard.classList.remove('hidden');
+    otpInput.focus();
+  });
+
+  document.getElementById('verify-btn').addEventListener('click', async () => {
+    const token = otpInput.value.trim();
+    if (token.length !== 6) {
+      otpStatus.textContent = 'Enter the 6-digit code from the SMS.';
+      otpStatus.classList.add('error');
+      return;
+    }
+    otpStatus.textContent = 'Verifying…';
+    otpStatus.classList.remove('error');
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: currentPhone,
+      token,
+      type: 'sms',
+    });
+
+    if (error) {
+      otpStatus.textContent = error.message;
+      otpStatus.classList.add('error');
+      return;
+    }
+
+    // First login for this user — make sure they have a profile row.
+    // This login page is the artist-facing entry point, so default role is 'artist'.
+    const user = data.user;
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      await supabase.from('profiles').insert({ id: user.id, role: 'artist' });
+    }
+
+    otpStatus.textContent = '';
+    showSuccess();
+  });
+
+  document.getElementById('change-number-btn').addEventListener('click', () => {
+    otpCard.classList.add('hidden');
+    phoneCard.classList.remove('hidden');
+    otpInput.value = '';
+    otpStatus.textContent = '';
+  });
+
+  document.getElementById('go-to-upload-btn').addEventListener('click', () => {
+    window.location.href = 'upload.html';
+  });
+
+  function showSuccess() {
+    phoneCard.classList.add('hidden');
+    otpCard.classList.add('hidden');
+    successCard.classList.remove('hidden');
+  }
+</script>
+</body>
+</html>

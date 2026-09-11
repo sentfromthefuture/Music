@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Upload — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --warn-bg: #fbeed9;
+    --warn-ink: #8a5a12;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--ink-muted); margin: 0 0 20px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 64px; }
+
+  .type-toggle, .price-toggle { display: flex; gap: 8px; }
+  .type-toggle button, .price-toggle button {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-alt);
+    color: var(--ink-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .type-toggle button.active, .price-toggle button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .file-drop {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+  .file-drop.filled { color: var(--ink); border-style: solid; }
+  .file-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+
+  button.primary {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 18px;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .status-line { font-size: 12px; color: var(--ink-muted); margin-top: 8px; min-height: 16px; }
+  .status-line.error { color: #b3261e; }
+
+  /* Pending-payment card (shown after successful upload) */
+  .pending-card { opacity: 0.9; }
+  .pending-card .row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .pending-card .thumb {
+    width: 44px; height: 44px; border-radius: 8px; background: var(--surface-alt);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink-muted);
+  }
+  .ref-badge {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--warn-bg); color: var(--warn-ink);
+    border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px;
+  }
+  .ref-badge strong { font-weight: 600; }
+  .pay-instructions { font-size: 12px; color: var(--ink-muted); margin: 0 0 10px; }
+  .done-msg { font-size: 13px; color: var(--success); font-weight: 500; }
+
+  .hidden { display: none !important; }
+
+  .waveform-wrap { position: relative; margin-top: 6px; border-radius: 8px; overflow: hidden; background: var(--surface-alt); }
+  #waveform-canvas { display: block; width: 100%; height: 80px; }
+  #preview-window {
+    position: absolute; top: 0; bottom: 0;
+    background: rgba(184, 121, 44, 0.35);
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    pointer-events: none;
+  }
+  #preview-start-slider { width: 100%; margin-top: 10px; }
+  #preview-range-label { font-size: 11px; color: var(--ink-muted); margin: 4px 0 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Upload</h1>
+  <p class="sub">Share a track or a beat with your listeners.</p>
+
+  <form id="upload-form" class="card">
+    <label>Type</label>
+    <div class="type-toggle">
+      <button type="button" data-type="track" class="active">Track</button>
+      <button type="button" data-type="beat">Beat</button>
+    </div>
+
+    <label for="title">Title</label>
+    <input type="text" id="title" required placeholder="e.g. Naiwe" />
+
+    <label for="genre">Genre</label>
+    <select id="genre" required>
+      <option value="">Select genre</option>
+      <option>Amapiano</option>
+      <option>Afrobeat</option>
+      <option>Gospel</option>
+      <option>Hip-hop</option>
+      <option>Zed R&B</option>
+      <option>Other</option>
+    </select>
+
+    <div id="bpm-field" class="hidden">
+      <label for="bpm">BPM</label>
+      <input type="number" id="bpm" min="40" max="220" placeholder="e.g. 112" />
+    </div>
+
+    <div id="price-field">
+      <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        Price
+        <button type="button" id="price-info-btn" style="width:16px;height:16px;border-radius:50%;border:1px solid var(--border);background:var(--surface-alt);color:var(--ink-muted);font-size:11px;line-height:1;cursor:pointer;padding:0;">?</button>
+      </label>
+      <div id="price-info" class="hidden" style="background:var(--surface-alt);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--ink-muted);">
+        <strong style="color:var(--ink);">Free</strong> — anyone can download this at no cost.<br/>
+        <strong style="color:var(--ink);">Paid</strong> — set the amount buyers pay to download it. This is separate from the listing fee you'll pay to get your upload published.
+      </div>
+      <div class="price-toggle">
+        <button type="button" data-free="true" class="active">Free</button>
+        <button type="button" data-free="false">Paid</button>
+      </div>
+      <div id="amount-field" class="hidden" style="margin-top:10px;">
+        <input type="number" id="price" min="1" step="1" placeholder="Amount in Kwacha" />
+      </div>
+    </div>
+
+    <label>Cover image</label>
+    <div class="file-drop" id="cover-drop">Tap to choose an image (optional)</div>
+    <input type="file" id="cover-input" accept="image/*" class="hidden" />
+
+    <label>Audio file</label>
+    <div class="file-drop" id="audio-drop">Tap to choose an audio file</div>
+    <input type="file" id="audio-input" accept="audio/*" class="hidden" />
+
+    <div id="waveform-field" class="hidden">
+      <label>Choose preview section (30s)</label>
+      <div class="waveform-wrap">
+        <canvas id="waveform-canvas" width="352" height="80"></canvas>
+        <div id="preview-window"></div>
+      </div>
+      <input type="range" id="preview-start-slider" min="0" max="0" step="0.1" value="0" />
+      <p id="preview-range-label">0:00 – 0:00</p>
+    </div>
+
+    <button type="submit" class="primary" id="submit-btn">Upload</button>
+    <p class="status-line" id="status-line"></p>
+  </form>
+
+  <!-- Shown after a successful upload, replaces the form -->
+  <div id="pending-card" class="card pending-card hidden">
+    <div class="row">
+      <div class="thumb">♪</div>
+      <div>
+        <p style="margin:0;font-size:13px;font-weight:600;" id="pending-title">—</p>
+        <p style="margin:0;font-size:12px;color:var(--ink-muted);" id="pending-status-label">Awaiting payment</p>
+      </div>
+    </div>
+
+    <div id="review-flow">
+      <div class="ref-badge">
+        <span>Reference</span>
+        <strong id="ref-number">—</strong>
+      </div>
+      <p class="pay-instructions">Pay the listing fee to <strong>097X XXX XXX</strong> (MoMo), then paste your payment confirmation SMS below.</p>
+      <textarea id="sms-input" placeholder="Paste your payment confirmation SMS"></textarea>
+      <button type="button" class="primary" id="sms-submit-btn">Submit for review</button>
+      <p class="status-line" id="sms-status-line"></p>
+      <p class="done-msg hidden" id="done-msg">Submitted — waiting for approval. This page will update automatically.</p>
+    </div>
+
+    <div id="approved-flow" class="hidden">
+      <p class="done-msg" style="margin-bottom:14px;">🎉 It's live! Your upload is now visible to everyone.</p>
+      <button type="button" class="primary" id="upload-another-btn">Upload another</button>
+      <a href="my-uploads.html" style="display:block;text-align:center;font-size:12px;color:var(--ink-muted);margin-top:12px;">View all my uploads</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  // --- Fill these in from your Supabase project settings ---
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+  const LISTING_FEE_TEXT = 'K100'; // shown in the pay instructions, adjust as needed
+  // -----------------------------------------------------------
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const form = document.getElementById('upload-form');
+  const statusLine = document.getElementById('status-line');
+  const submitBtn = document.getElementById('submit-btn');
+
+  let selectedType = 'track';
+  let isFree = true;
+
+  // Type toggle
+  document.querySelectorAll('.type-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.type-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedType = btn.dataset.type;
+      document.getElementById('bpm-field').classList.toggle('hidden', selectedType !== 'beat');
+      // Beats are always paid — hide the Free/Paid toggle and force paid
+      const priceField = document.getElementById('price-field');
+      if (selectedType === 'beat') {
+        priceField.querySelectorAll('.price-toggle button').forEach(b => b.classList.remove('active'));
+        priceField.querySelector('[data-free="false"]').classList.add('active');
+        isFree = false;
+        document.getElementById('amount-field').classList.remove('hidden');
+      }
+      maybeShowWaveform();
+    });
+  });
+
+  // Free/Paid toggle
+  document.querySelectorAll('.price-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (selectedType === 'beat') return; // beats always paid
+      document.querySelectorAll('.price-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      isFree = btn.dataset.free === 'true';
+      document.getElementById('amount-field').classList.toggle('hidden', isFree);
+    });
+  });
+
+  // File pickers
+  function wireFileDrop(dropId, inputId, labelWhenFilled) {
+    const drop = document.getElementById(dropId);
+    const input = document.getElementById(inputId);
+    drop.addEventListener('click', () => input.click());
+    input.addEventListener('change', () => {
+      if (input.files[0]) {
+        drop.textContent = input.files[0].name;
+        drop.classList.add('filled');
+      }
+    });
+  }
+  wireFileDrop('cover-drop', 'cover-input');
+  wireFileDrop('audio-drop', 'audio-input');
+
+  document.getElementById('price-info-btn').addEventListener('click', () => {
+    document.getElementById('price-info').classList.toggle('hidden');
+  });
+
+  // --- Waveform preview selector (beats only) ---
+  let decodedBuffer = null;
+  let previewStartSeconds = 0;
+  const PREVIEW_LENGTH = 30;
+
+  const waveformField = document.getElementById('waveform-field');
+  const waveformCanvas = document.getElementById('waveform-canvas');
+  const previewWindow = document.getElementById('preview-window');
+  const previewSlider = document.getElementById('preview-start-slider');
+  const previewRangeLabel = document.getElementById('preview-range-label');
+
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  function drawWaveform(buffer) {
+    const ctx = waveformCanvas.getContext('2d');
+    const width = waveformCanvas.width;
+    const height = waveformCanvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    // Mix down to mono
+    const channels = [];
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) channels.push(buffer.getChannelData(ch));
+    const length = channels[0].length;
+
+    const samplesPerPixel = Math.max(1, Math.floor(length / width));
+    ctx.fillStyle = '#9aa39c';
+    const mid = height / 2;
+
+    for (let x = 0; x < width; x++) {
+      const start = x * samplesPerPixel;
+      let min = 0, max = 0;
+      for (let i = 0; i < samplesPerPixel; i++) {
+        let sampleSum = 0;
+        for (let ch = 0; ch < channels.length; ch++) sampleSum += channels[ch][start + i] || 0;
+        const sample = sampleSum / channels.length;
+        if (sample < min) min = sample;
+        if (sample > max) max = sample;
+      }
+      const y1 = mid + min * mid;
+      const y2 = mid + max * mid;
+      ctx.fillRect(x, y1, 1, Math.max(1, y2 - y1));
+    }
+  }
+
+  function updatePreviewWindowPosition() {
+    const duration = decodedBuffer ? decodedBuffer.duration : 0;
+    if (!duration) return;
+    const width = waveformCanvas.clientWidth;
+    const startPx = (previewStartSeconds / duration) * width;
+    const windowSeconds = Math.min(PREVIEW_LENGTH, duration);
+    const windowPx = (windowSeconds / duration) * width;
+    previewWindow.style.left = `${startPx}px`;
+    previewWindow.style.width = `${windowPx}px`;
+    previewRangeLabel.textContent = `${formatTime(previewStartSeconds)} – ${formatTime(Math.min(previewStartSeconds + PREVIEW_LENGTH, duration))}`;
+  }
+
+  previewSlider.addEventListener('input', () => {
+    previewStartSeconds = Number(previewSlider.value);
+    updatePreviewWindowPosition();
+  });
+
+  async function maybeShowWaveform() {
+    const audioFile = document.getElementById('audio-input').files[0];
+    if (selectedType !== 'beat' || !audioFile) {
+      waveformField.classList.add('hidden');
+      decodedBuffer = null;
+      return;
+    }
+    waveformField.classList.remove('hidden');
+    const arrayBuffer = await audioFile.arrayBuffer();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioCtx();
+    decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    audioCtx.close();
+
+    drawWaveform(decodedBuffer);
+    previewStartSeconds = 0;
+    const maxStart = Math.max(0, decodedBuffer.duration - PREVIEW_LENGTH);
+    previewSlider.min = 0;
+    previewSlider.max = maxStart;
+    previewSlider.value = 0;
+    previewSlider.disabled = maxStart === 0;
+    updatePreviewWindowPosition();
+  }
+
+  document.getElementById('audio-input').addEventListener('change', maybeShowWaveform);
+
+  function setStatus(msg, isError = false) {
+    statusLine.textContent = msg;
+    statusLine.classList.toggle('error', isError);
+  }
+
+  function genRef(prefix) {
+    const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `${prefix}-${rand}`;
+  }
+
+  // Trim a window of an already-decoded AudioBuffer and return a WAV Blob
+  function trimBufferToWav(buffer, startSeconds, seconds = 30) {
+    const sampleRate = buffer.sampleRate;
+    const startFrame = Math.floor(startSeconds * sampleRate);
+    const frameCount = Math.min(buffer.length - startFrame, sampleRate * seconds);
+    const AudioCtxForBuffer = window.AudioContext || window.webkitAudioContext;
+    const tmpCtx = new AudioCtxForBuffer();
+    const trimmed = tmpCtx.createBuffer(buffer.numberOfChannels, frameCount, sampleRate);
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      trimmed.copyToChannel(buffer.getChannelData(ch).slice(startFrame, startFrame + frameCount), ch);
+    }
+    tmpCtx.close();
+    return audioBufferToWav(trimmed);
+  }
+
+  // Minimal WAV encoder (16-bit PCM)
+  function audioBufferToWav(buffer) {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const length = buffer.length * numChannels * 2 + 44;
+    const arrBuf = new ArrayBuffer(length);
+    const view = new DataView(arrBuf);
+
+    const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+
+    writeStr(0, 'RIFF');
+    view.setUint32(4, length - 8, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numChannels * 2, true);
+    view.setUint16(32, numChannels * 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, length - 44, true);
+
+    const channels = [];
+    for (let ch = 0; ch < numChannels; ch++) channels.push(buffer.getChannelData(ch));
+
+    let offset = 44;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let ch = 0; ch < numChannels; ch++) {
+        const sample = Math.max(-1, Math.min(1, channels[ch][i]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+        offset += 2;
+      }
+    }
+    return new Blob([arrBuf], { type: 'audio/wav' });
+  }
+
+  async function getAudioDuration(file) {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.onloadedmetadata = () => resolve(Math.round(audio.duration));
+      audio.src = URL.createObjectURL(file);
+    });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    setStatus('Checking your session…');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setStatus('Please log in before uploading.', true);
+      submitBtn.disabled = false;
+      return;
+    }
+
+    const title = document.getElementById('title').value.trim();
+    const genre = document.getElementById('genre').value;
+    const bpm = document.getElementById('bpm').value || null;
+    const price = isFree ? 0 : Number(document.getElementById('price').value || 0);
+    const coverFile = document.getElementById('cover-input').files[0];
+    const audioFile = document.getElementById('audio-input').files[0];
+
+    if (!title || !genre || !audioFile) {
+      setStatus('Please fill in title, genre, and choose an audio file.', true);
+      submitBtn.disabled = false;
+      return;
+    }
+    if (!isFree && (!price || price <= 0)) {
+      setStatus('Please set a price.', true);
+      submitBtn.disabled = false;
+      return;
+    }
+
+    try {
+      const ts = Date.now();
+      const ext = audioFile.name.split('.').pop();
+
+      // 1. Cover image (optional) -> public-previews
+      let coverUrl = null;
+      if (coverFile) {
+        setStatus('Uploading cover image…');
+        const coverExt = coverFile.name.split('.').pop();
+        const coverPath = `${user.id}/cover-${ts}.${coverExt}`;
+        const { error: coverErr } = await supabase.storage
+          .from('public-previews')
+          .upload(coverPath, coverFile);
+        if (coverErr) throw coverErr;
+        coverUrl = supabase.storage.from('public-previews').getPublicUrl(coverPath).data.publicUrl;
+      }
+
+      // 2. Full audio file. Free tracks go to public-previews (so they're
+      // instantly downloadable by anyone); paid tracks and beats go to
+      // private-full (gated behind a purchase and a signed URL).
+      setStatus('Uploading audio file…');
+      const fullPath = `${user.id}/${ts}-full.${ext}`;
+      const fullBucket = (selectedType === 'track' && isFree) ? 'public-previews' : 'private-full';
+      const { error: fullErr } = await supabase.storage
+        .from(fullBucket)
+        .upload(fullPath, audioFile);
+      if (fullErr) throw fullErr;
+
+      const duration = decodedBuffer ? Math.round(decodedBuffer.duration) : await getAudioDuration(audioFile);
+
+      // 3. Beat preview clip -> public-previews (beats only), trimmed from the user's chosen start point
+      let previewPath = null;
+      if (selectedType === 'beat') {
+        setStatus('Trimming preview clip…');
+        const bufferForTrim = decodedBuffer || await (async () => {
+          const ab = await audioFile.arrayBuffer();
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AudioCtx();
+          const b = await ctx.decodeAudioData(ab);
+          ctx.close();
+          return b;
+        })();
+        const previewBlob = trimBufferToWav(bufferForTrim, previewStartSeconds, PREVIEW_LENGTH);
+        previewPath = `${user.id}/${ts}-preview.wav`;
+        const { error: previewErr } = await supabase.storage
+          .from('public-previews')
+          .upload(previewPath, previewBlob);
+        if (previewErr) throw previewErr;
+      }
+
+      // 4. Insert DB row with a reference number, retrying on collision
+      setStatus('Saving…');
+      const table = selectedType === 'beat' ? 'beats' : 'tracks';
+      const prefix = selectedType === 'beat' ? 'BEAT' : 'TRK';
+      let insertedRow = null;
+      for (let attempt = 0; attempt < 5 && !insertedRow; attempt++) {
+        const reference_number = genRef(prefix);
+        const payload = selectedType === 'beat'
+          ? { owner_id: user.id, title, genre, bpm: bpm ? Number(bpm) : null, price, preview_path: previewPath, full_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration }
+          : { owner_id: user.id, title, genre, is_free: isFree, price, file_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration };
+
+        const { data, error } = await supabase.from(table).insert(payload).select().single();
+        if (!error) { insertedRow = data; break; }
+        if (error.code !== '23505') throw error; // not a reference-number collision, give up
+      }
+      if (!insertedRow) throw new Error('Could not generate a unique reference number, please try again.');
+
+      // 5. Show the pending-payment card
+      showPendingCard(insertedRow, table);
+    } catch (err) {
+      console.error(err);
+      setStatus(err.message || 'Something went wrong, please try again.', true);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  function showPendingCard(row, table) {
+    form.classList.add('hidden');
+    const card = document.getElementById('pending-card');
+    card.classList.remove('hidden');
+    document.getElementById('pending-title').textContent = row.title;
+    document.getElementById('ref-number').textContent = row.reference_number;
+    document.querySelector('.pay-instructions').innerHTML =
+      `Pay the listing fee (<strong>${LISTING_FEE_TEXT}</strong>) to <strong>097X XXX XXX</strong> (MoMo), then paste your payment confirmation SMS below.`;
+
+    const statusLabel = document.getElementById('pending-status-label');
+    const reviewFlow = document.getElementById('review-flow');
+    const approvedFlow = document.getElementById('approved-flow');
+    const smsInput = document.getElementById('sms-input');
+    const smsSubmitBtn = document.getElementById('sms-submit-btn');
+    const smsStatus = document.getElementById('sms-status-line');
+    const doneMsg = document.getElementById('done-msg');
+
+    let submitting = false;
+
+    function renderPendingPayment(wasRejected) {
+      statusLabel.textContent = wasRejected ? 'Payment not confirmed — please try again' : 'Awaiting payment';
+      reviewFlow.classList.remove('hidden');
+      approvedFlow.classList.add('hidden');
+      smsInput.value = '';
+      smsInput.classList.remove('hidden');
+      smsSubmitBtn.classList.remove('hidden');
+      smsSubmitBtn.disabled = false;
+      doneMsg.classList.add('hidden');
+      smsStatus.textContent = '';
+      smsStatus.classList.remove('error');
+    }
+
+    function renderPendingReview() {
+      statusLabel.textContent = 'Pending review';
+      reviewFlow.classList.remove('hidden');
+      approvedFlow.classList.add('hidden');
+      smsInput.classList.add('hidden');
+      smsSubmitBtn.classList.add('hidden');
+      smsStatus.textContent = '';
+      doneMsg.classList.remove('hidden');
+    }
+
+    function renderApproved() {
+      statusLabel.textContent = 'Live';
+      reviewFlow.classList.add('hidden');
+      approvedFlow.classList.remove('hidden');
+    }
+
+    smsSubmitBtn.addEventListener('click', async () => {
+      if (submitting) return;
+      const smsText = smsInput.value.trim();
+      if (!smsText) {
+        smsStatus.textContent = 'Please paste your confirmation SMS.';
+        smsStatus.classList.add('error');
+        return;
+      }
+      submitting = true;
+      smsSubmitBtn.disabled = true;
+      smsStatus.textContent = 'Submitting…';
+      smsStatus.classList.remove('error');
+      const { error } = await supabase.from(table)
+        .update({ transaction_sms: smsText, status: 'pending_review' })
+        .eq('id', row.id);
+      submitting = false;
+      if (error) {
+        smsStatus.textContent = error.message;
+        smsStatus.classList.add('error');
+        smsSubmitBtn.disabled = false;
+        return;
+      }
+      renderPendingReview();
+    });
+
+    // Live status tracking — so this page updates the moment an admin
+    // approves or rejects, without the artist needing to refresh (which
+    // would otherwise just land them on a blank new upload form).
+    supabase
+      .channel(`upload-status-${row.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table,
+        filter: `id=eq.${row.id}`,
+      }, (payload) => {
+        const newStatus = payload.new.status;
+        if (newStatus === 'approved') {
+          renderApproved();
+        } else if (newStatus === 'pending_payment') {
+          renderPendingPayment(true);
+        } else if (newStatus === 'pending_review') {
+          renderPendingReview();
+        }
+      })
+      .subscribe();
+
+    document.getElementById('upload-another-btn').addEventListener('click', () => {
+      window.location.reload();
+    });
+
+    renderPendingPayment(false);
+  }
+</script>
+</body>
+</html>

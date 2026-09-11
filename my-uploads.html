@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Uploads — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --warn-bg: #fbeed9;
+    --warn-ink: #8a5a12;
+    --removed-bg: #f3e0df;
+    --removed-ink: #8a2e26;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--ink-muted); margin: 0 0 16px; }
+  #notif-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink-muted); font-size: 11px; padding: 6px 10px; cursor: pointer; white-space: nowrap;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .thumb {
+    width: 40px; height: 40px; border-radius: 8px; background: var(--surface-alt);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink-muted);
+  }
+  .title { margin: 0; font-size: 14px; font-weight: 600; }
+  .meta { margin: 0; font-size: 12px; color: var(--ink-muted); }
+
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+  .badge.pending_payment { background: var(--warn-bg); color: var(--warn-ink); }
+  .badge.pending_review { background: var(--warn-bg); color: var(--warn-ink); }
+  .badge.approved { background: #e1f0e6; color: var(--success); }
+  .badge.removed { background: var(--removed-bg); color: var(--removed-ink); }
+
+  .pay-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .ref-badge {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--warn-bg); color: var(--warn-ink);
+    border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 12px;
+  }
+  .ref-badge strong { font-weight: 600; }
+  .pay-instructions { font-size: 12px; color: var(--ink-muted); margin: 0 0 10px; }
+  textarea {
+    width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 8px;
+  }
+  button.primary {
+    width: 100%; padding: 10px; border: none; border-radius: 8px;
+    background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status-line { font-size: 12px; color: var(--ink-muted); margin-top: 6px; min-height: 14px; }
+  .status-line.error { color: #b3261e; }
+
+  .empty-state, .gate-msg { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header-row">
+    <div>
+      <h1>My Uploads</h1>
+      <p class="sub">Track the status of everything you've uploaded.</p>
+    </div>
+    <button type="button" id="notif-btn" class="hidden">Enable notifications</button>
+  </div>
+
+  <div id="gate" class="gate-msg">Checking access…</div>
+  <div id="list" class="hidden"></div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const gate = document.getElementById('gate');
+  const list = document.getElementById('list');
+  const notifBtn = document.getElementById('notif-btn');
+
+  const STATUS_LABELS = {
+    pending_payment: 'Awaiting payment',
+    pending_review: 'Pending review',
+    approved: 'Live',
+    removed: 'Taken down',
+  };
+
+  let currentUserId = null;
+
+  (async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      gate.innerHTML = 'Please <a href="login.html">log in</a> first.';
+      return;
+    }
+    currentUserId = user.id;
+    gate.classList.add('hidden');
+    list.classList.remove('hidden');
+
+    if ('Notification' in window && Notification.permission === 'default') {
+      notifBtn.classList.remove('hidden');
+    }
+
+    await loadUploads();
+    subscribeToChanges();
+  })();
+
+  notifBtn.addEventListener('click', async () => {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      notifBtn.textContent = 'Notifications on';
+      notifBtn.disabled = true;
+    }
+  });
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  function cardHtml(item) {
+    const label = STATUS_LABELS[item.status] || item.status;
+    const paySection = item.status === 'pending_payment' ? `
+      <div class="pay-section" data-pay-section>
+        <div class="ref-badge">
+          <span>Reference</span>
+          <strong>${escapeHtml(item.reference_number)}</strong>
+        </div>
+        <p class="pay-instructions">Pay the listing fee to <strong>097X XXX XXX</strong> (MoMo), then paste your payment confirmation SMS below.</p>
+        <textarea placeholder="Paste your payment confirmation SMS" data-sms-input></textarea>
+        <button type="button" class="primary" data-sms-submit>Submit for review</button>
+        <p class="status-line" data-sms-status></p>
+      </div>
+    ` : '';
+
+    return `
+      <div class="row">
+        <div class="thumb">${item.itemType === 'beat' ? '♫' : '♪'}</div>
+        <div>
+          <p class="title">${escapeHtml(item.title)} <span style="font-weight:400;color:var(--ink-muted);">(${item.itemType})</span></p>
+          <span class="badge ${item.status}">${escapeHtml(label)}</span>
+        </div>
+      </div>
+      ${paySection}
+    `;
+  }
+
+  function wireCardActions(cardEl, item) {
+    const submitBtn = cardEl.querySelector('[data-sms-submit]');
+    if (!submitBtn) return;
+    const smsInput = cardEl.querySelector('[data-sms-input]');
+    const smsStatus = cardEl.querySelector('[data-sms-status]');
+    let submitting = false;
+
+    submitBtn.addEventListener('click', async () => {
+      if (submitting) return;
+      const smsText = smsInput.value.trim();
+      if (!smsText) {
+        smsStatus.textContent = 'Please paste your confirmation SMS.';
+        smsStatus.classList.add('error');
+        return;
+      }
+      submitting = true;
+      submitBtn.disabled = true;
+      smsStatus.textContent = 'Submitting…';
+      smsStatus.classList.remove('error');
+
+      const table = item.itemType === 'beat' ? 'beats' : 'tracks';
+      const { error } = await supabase.from(table)
+        .update({ transaction_sms: smsText, status: 'pending_review' })
+        .eq('id', item.id);
+
+      submitting = false;
+      if (error) {
+        smsStatus.textContent = error.message;
+        smsStatus.classList.add('error');
+        submitBtn.disabled = false;
+        return;
+      }
+      // The realtime subscription will re-render this card automatically.
+    });
+  }
+
+  let uploads = [];
+
+  async function loadUploads() {
+    const [{ data: tracks }, { data: beats }] = await Promise.all([
+      supabase.from('tracks').select('*').eq('owner_id', currentUserId),
+      supabase.from('beats').select('*').eq('owner_id', currentUserId),
+    ]);
+
+    uploads = [
+      ...(tracks || []).map(t => ({ ...t, itemType: 'track' })),
+      ...(beats || []).map(b => ({ ...b, itemType: 'beat' })),
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    renderList();
+  }
+
+  function renderList() {
+    list.innerHTML = '';
+    if (uploads.length === 0) {
+      list.innerHTML = '<p class="empty-state">No uploads yet.</p>';
+      return;
+    }
+    for (const item of uploads) {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'card';
+      cardEl.dataset.itemId = item.id;
+      cardEl.dataset.itemType = item.itemType;
+      cardEl.innerHTML = cardHtml(item);
+      wireCardActions(cardEl, item);
+      list.appendChild(cardEl);
+    }
+  }
+
+  function updateItemInPlace(itemType, newRow) {
+    const idx = uploads.findIndex(u => u.id === newRow.id && u.itemType === itemType);
+    if (idx === -1) return;
+    const previousStatus = uploads[idx].status;
+    uploads[idx] = { ...uploads[idx], ...newRow, itemType };
+    renderList();
+
+    if (previousStatus !== 'approved' && newRow.status === 'approved') {
+      notifyApproved(uploads[idx]);
+    }
+  }
+
+  function notifyApproved(item) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Your upload is live!', { body: item.title });
+    }
+  }
+
+  function subscribeToChanges() {
+    supabase
+      .channel('my-uploads-tracks')
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'tracks', filter: `owner_id=eq.${currentUserId}`,
+      }, (payload) => updateItemInPlace('track', payload.new))
+      .subscribe();
+
+    supabase
+      .channel('my-uploads-beats')
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'beats', filter: `owner_id=eq.${currentUserId}`,
+      }, (payload) => updateItemInPlace('beat', payload.new))
+      .subscribe();
+  }
+</script>
+</body>
+</html>

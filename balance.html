@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Balance — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --warn-bg: #fbeed9;
+    --warn-ink: #8a5a12;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .balance-label { font-size: 12px; color: var(--ink-muted); margin: 0 0 2px; }
+  .balance-value { font-size: 28px; font-weight: 700; margin: 0 0 14px; }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="tel"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: var(--surface); color: var(--ink);
+  }
+
+  button.primary {
+    width: 100%; padding: 12px; border: none; border-radius: 8px;
+    background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 14px;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status-line { font-size: 12px; color: var(--ink-muted); margin-top: 8px; min-height: 16px; }
+  .status-line.error { color: #b3261e; }
+
+  .pending-banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; }
+  .paid-banner { background: #e1f0e6; color: var(--success); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .stat-value { font-size: 20px; font-weight: 700; margin: 0; }
+  .stat-label { font-size: 11px; color: var(--ink-muted); margin: 2px 0 0; }
+
+  h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+  .item-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .item-row:last-child { border-bottom: none; }
+  .item-row .name { font-weight: 500; }
+  .item-row .sold { color: var(--ink-muted); font-size: 12px; }
+
+  .gate-msg, .empty-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>My Balance</h1>
+
+  <div id="gate" class="gate-msg">Checking access…</div>
+
+  <div id="content" class="hidden">
+    <div class="card">
+      <p class="balance-label">Available balance</p>
+      <p class="balance-value" id="balance-value">K0</p>
+
+      <div id="pending-banner" class="pending-banner hidden"></div>
+      <div id="paid-banner" class="paid-banner hidden"></div>
+
+      <button type="button" class="primary" id="withdraw-btn">Request withdrawal</button>
+      <p class="status-line" id="withdraw-status"></p>
+    </div>
+
+    <div class="card">
+      <label for="momo-input">Payout MoMo number</label>
+      <input type="tel" id="momo-input" placeholder="0971234567" />
+      <button type="button" class="primary" id="save-momo-btn">Save</button>
+      <p class="status-line" id="momo-status"></p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-tile"><p class="stat-value" id="stat-live">–</p><p class="stat-label">Live uploads</p></div>
+      <div class="stat-tile"><p class="stat-value" id="stat-sold">–</p><p class="stat-label">Beats sold</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Sales by item</h2>
+      <div id="sales-list"><p class="empty-state" style="padding:10px 0;">No sales yet.</p></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const gate = document.getElementById('gate');
+  const content = document.getElementById('content');
+
+  function normalizeZambianPhone(raw) {
+    const cleaned = raw.trim().replace(/[\s\-()]/g, '');
+    let normalized = null;
+    if (cleaned.startsWith('+260')) normalized = cleaned;
+    else if (cleaned.startsWith('260')) normalized = '+' + cleaned;
+    else if (cleaned.startsWith('0')) normalized = '+260' + cleaned.slice(1);
+    else if (/^\d{9}$/.test(cleaned)) normalized = '+260' + cleaned;
+    if (normalized && /^\+260\d{9}$/.test(normalized)) return normalized;
+    return null;
+  }
+
+  let currentUser = null;
+
+  (async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      gate.innerHTML = 'Please <a href="login.html">log in</a> first.';
+      return;
+    }
+    currentUser = user;
+    gate.classList.add('hidden');
+    content.classList.remove('hidden');
+
+    await loadProfile();
+    await loadBalanceAndStats();
+    await loadPendingWithdrawal();
+    subscribeToWithdrawals();
+  })();
+
+  async function loadProfile() {
+    const { data: profile } = await supabase.from('profiles').select('momo_number').eq('id', currentUser.id).maybeSingle();
+    if (profile?.momo_number) document.getElementById('momo-input').value = profile.momo_number;
+  }
+
+  document.getElementById('save-momo-btn').addEventListener('click', async () => {
+    const momoStatus = document.getElementById('momo-status');
+    const phone = normalizeZambianPhone(document.getElementById('momo-input').value);
+    if (!phone) {
+      momoStatus.textContent = 'Enter a valid Zambian number, e.g. 0971234567';
+      momoStatus.classList.add('error');
+      return;
+    }
+    momoStatus.textContent = 'Saving…';
+    momoStatus.classList.remove('error');
+    const { error } = await supabase.from('profiles').update({ momo_number: phone }).eq('id', currentUser.id);
+    momoStatus.textContent = error ? error.message : 'Saved.';
+    momoStatus.classList.toggle('error', !!error);
+  });
+
+  async function computeArtistBalance(artistId) {
+    const [{ data: tracks }, { data: beats }] = await Promise.all([
+      supabase.from('tracks').select('id, title').eq('owner_id', artistId),
+      supabase.from('beats').select('id, title').eq('owner_id', artistId),
+    ]);
+    const trackIds = (tracks || []).map(t => t.id);
+    const beatIds = (beats || []).map(b => b.id);
+
+    const [{ data: trackSales }, { data: beatSales }] = await Promise.all([
+      trackIds.length ? supabase.from('purchases').select('amount, item_id').eq('item_type', 'track').eq('status', 'fulfilled').in('item_id', trackIds) : { data: [] },
+      beatIds.length ? supabase.from('purchases').select('amount, item_id').eq('item_type', 'beat').eq('status', 'fulfilled').in('item_id', beatIds) : { data: [] },
+    ]);
+
+    const { data: paidWithdrawals } = await supabase.from('withdrawals').select('amount').eq('artist_id', artistId).eq('status', 'paid');
+
+    const earned = [...(trackSales || []), ...(beatSales || [])].reduce((s, p) => s + Number(p.amount), 0);
+    const withdrawn = (paidWithdrawals || []).reduce((s, w) => s + Number(w.amount), 0);
+
+    return {
+      balance: earned - withdrawn,
+      soldCount: (trackSales || []).length + (beatSales || []).length,
+      tracks: tracks || [],
+      beats: beats || [],
+      trackSales: trackSales || [],
+      beatSales: beatSales || [],
+    };
+  }
+
+  let currentBalance = 0;
+
+  async function loadBalanceAndStats() {
+    const result = await computeArtistBalance(currentUser.id);
+    currentBalance = result.balance;
+    document.getElementById('balance-value').textContent = `K${result.balance}`;
+    document.getElementById('stat-sold').textContent = result.soldCount;
+
+    const [{ count: liveTracks }, { count: liveBeats }] = await Promise.all([
+      supabase.from('tracks').select('*', { count: 'exact', head: true }).eq('owner_id', currentUser.id).eq('status', 'approved'),
+      supabase.from('beats').select('*', { count: 'exact', head: true }).eq('owner_id', currentUser.id).eq('status', 'approved'),
+    ]);
+    document.getElementById('stat-live').textContent = (liveTracks || 0) + (liveBeats || 0);
+
+    // Sales by item
+    const salesByItem = new Map();
+    const titleMap = new Map();
+    result.tracks.forEach(t => titleMap.set(`track-${t.id}`, t.title));
+    result.beats.forEach(b => titleMap.set(`beat-${b.id}`, b.title));
+    [...result.trackSales.map(s => ({ ...s, type: 'track' })), ...result.beatSales.map(s => ({ ...s, type: 'beat' }))].forEach(sale => {
+      const key = `${sale.type}-${sale.item_id}`;
+      const existing = salesByItem.get(key) || { count: 0, total: 0 };
+      existing.count += 1;
+      existing.total += Number(sale.amount);
+      salesByItem.set(key, existing);
+    });
+
+    const salesList = document.getElementById('sales-list');
+    if (salesByItem.size === 0) {
+      salesList.innerHTML = '<p class="empty-state" style="padding:10px 0;">No sales yet.</p>';
+    } else {
+      salesList.innerHTML = '';
+      for (const [key, stats] of salesByItem) {
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `
+          <span class="name">${escapeHtml(titleMap.get(key) || 'Unknown')}</span>
+          <span class="sold">${stats.count} sold · K${stats.total}</span>
+        `;
+        salesList.appendChild(row);
+      }
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  let activeWithdrawalId = null;
+
+  async function loadPendingWithdrawal() {
+    const { data: pending } = await supabase.from('withdrawals').select('*').eq('artist_id', currentUser.id).eq('status', 'requested').maybeSingle();
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    const pendingBanner = document.getElementById('pending-banner');
+    if (pending) {
+      activeWithdrawalId = pending.id;
+      pendingBanner.textContent = `Withdrawal of K${pending.amount} requested — awaiting payment.`;
+      pendingBanner.classList.remove('hidden');
+      withdrawBtn.disabled = true;
+    }
+  }
+
+  document.getElementById('withdraw-btn').addEventListener('click', async () => {
+    const withdrawStatus = document.getElementById('withdraw-status');
+    const { data: profile } = await supabase.from('profiles').select('momo_number').eq('id', currentUser.id).maybeSingle();
+    if (!profile?.momo_number) {
+      withdrawStatus.textContent = 'Please save your MoMo number first.';
+      withdrawStatus.classList.add('error');
+      return;
+    }
+    if (currentBalance <= 0) {
+      withdrawStatus.textContent = 'No balance available to withdraw.';
+      withdrawStatus.classList.add('error');
+      return;
+    }
+    const btn = document.getElementById('withdraw-btn');
+    btn.disabled = true;
+    withdrawStatus.textContent = 'Submitting request…';
+    withdrawStatus.classList.remove('error');
+
+    const { data, error } = await supabase.from('withdrawals').insert({
+      artist_id: currentUser.id,
+      amount: currentBalance,
+      momo_number: profile.momo_number,
+    }).select().single();
+
+    if (error) {
+      withdrawStatus.textContent = error.message;
+      withdrawStatus.classList.add('error');
+      btn.disabled = false;
+      return;
+    }
+
+    activeWithdrawalId = data.id;
+    withdrawStatus.textContent = '';
+    const pendingBanner = document.getElementById('pending-banner');
+    pendingBanner.textContent = `Withdrawal of K${data.amount} requested — awaiting payment.`;
+    pendingBanner.classList.remove('hidden');
+  });
+
+  function subscribeToWithdrawals() {
+    supabase
+      .channel(`withdrawals-${currentUser.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'withdrawals', filter: `artist_id=eq.${currentUser.id}`,
+      }, (payload) => {
+        if (payload.new.status === 'paid' && payload.new.id === activeWithdrawalId) {
+          document.getElementById('pending-banner').classList.add('hidden');
+          const paidBanner = document.getElementById('paid-banner');
+          paidBanner.textContent = `K${payload.new.amount} sent to your MoMo number.`;
+          paidBanner.classList.remove('hidden');
+          document.getElementById('withdraw-btn').disabled = false;
+          activeWithdrawalId = null;
+          loadBalanceAndStats();
+        }
+      })
+      .subscribe();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Street Rush</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  touch-action: none;
+}
+
+body {
+  background: #111;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 500px;
+  margin: auto;
+  overflow: hidden;
+  background: #238b45;
+}
+
+/* Road */
+#road {
+  position: absolute;
+  left: 12%;
+  width: 76%;
+  height: 100%;
+  background: #333;
+  border-left: 7px solid #eee;
+  border-right: 7px solid #eee;
+}
+
+/* Lane markings */
+.lane {
+  position: absolute;
+  width: 7px;
+  height: 80px;
+  background: white;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  z-index: 10;
+  top: 15px;
+  left: 15px;
+  right: 15px;
+  display: flex;
+  justify-content: space-between;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 2px 2px #000;
+}
+
+/* Cars */
+.car {
+  position: absolute;
+  width: 48px;
+  height: 82px;
+  border-radius: 10px;
+}
+
+.player {
+  background: #e63946;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 15px rgba(255,0,0,.5);
+}
+
+.enemy {
+  background: #2878d0;
+}
+
+/* Windows */
+.car::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: 8px;
+  width: 32px;
+  height: 22px;
+  background: #8fd3ff;
+  border-radius: 5px;
+}
+
+.car::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  left: 7px;
+  width: 34px;
+  height: 8px;
+  background: #111;
+  border-radius: 4px;
+}
+
+/* Start / Game Over */
+#menu {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  background: rgba(0,0,0,.82);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+#menu h1 {
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+#menu p {
+  margin-bottom: 25px;
+  color: #ccc;
+}
+
+button {
+  border: none;
+  background: #e63946;
+  color: white;
+  padding: 16px 40px;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* Controls */
+.controls {
+  position: absolute;
+  z-index: 15;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 25px;
+}
+
+.control {
+  width: 75px;
+  height: 65px;
+  border-radius: 15px;
+  background: rgba(255,255,255,.25);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 35px;
+  user-select: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <div id="road"></div>
+
+  <div id="hud">
+    <span>🏁 Score: <span id="score">0</span></span>
+    <span>⚡ <span id="speed">1</span>x</span>
+  </div>
+
+  <div id="player" class="car player"></div>
+
+  <div class="controls">
+    <div id="left" class="control">◀</div>
+    <div id="right" class="control">▶</div>
+  </div>
+
+  <div id="menu">
+    <h1>🏎️ STREET RUSH</h1>
+    <p>Dodge traffic and survive as long as possible!</p>
+    <button id="start">START RACE</button>
+  </div>
+
+</div>
+
+<script>
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+const menu = document.getElementById("menu");
+const scoreText = document.getElementById("score");
+const speedText = document.getElementById("speed");
+
+let running = false;
+let score = 0;
+let speed = 5;
+let playerX = 50;
+let enemies = [];
+let lanes = [30, 50, 70];
+let spawnTimer = 0;
+let lastTime = 0;
+
+/* Create road lane markings */
+for (let i = 0; i < 8; i++) {
+  const line = document.createElement("div");
+  line.className = "lane";
+  line.style.top = (i * 130) + "px";
+  line.dataset.y = i * 130;
+  road.appendChild(line);
+}
+
+/* Controls */
+function moveLeft() {
+  if (!running) return;
+  playerX -= 7;
+  if (playerX < 25) playerX = 25;
+  updatePlayer();
+}
+
+function moveRight() {
+  if (!running) return;
+  playerX += 7;
+  if (playerX > 75) playerX = 75;
+  updatePlayer();
+}
+
+function updatePlayer() {
+  player.style.left = playerX + "%";
+}
+
+document.getElementById("left").addEventListener("touchstart", e => {
+  e.preventDefault();
+  moveLeft();
+});
+
+document.getElementById("right").addEventListener("touchstart", e => {
+  e.preventDefault();
+  moveRight();
+});
+
+/* Keyboard support */
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") moveLeft();
+  if (e.key === "ArrowRight") moveRight();
+});
+
+/* Start */
+document.getElementById("start").onclick = startGame;
+
+function startGame() {
+  enemies.forEach(e => e.remove());
+  enemies = [];
+
+  score = 0;
+  speed = 5;
+  playerX = 50;
+
+  scoreText.textContent = "0";
+  speedText.textContent = "1";
+
+  updatePlayer();
+
+  menu.style.display = "none";
+  running = true;
+
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+/* Spawn enemy */
+function spawnEnemy() {
+  const enemy = document.createElement("div");
+  enemy.className = "car enemy";
+
+  const lane = lanes[Math.floor(Math.random() * lanes.length)];
+
+  enemy.style.left = lane + "%";
+  enemy.style.top = "-100px";
+
+  game.appendChild(enemy);
+
+  enemies.push({
+    el: enemy,
+    x: lane,
+    y: -100
+  });
+}
+
+/* Collision */
+function collision(a, b) {
+  const r1 = a.getBoundingClientRect();
+  const r2 = b.getBoundingClientRect();
+
+  return !(
+    r1.bottom < r2.top ||
+    r1.top > r2.bottom ||
+    r1.right < r2.left ||
+    r1.left > r2.right
+  );
+}
+
+/* Game loop */
+function gameLoop(time) {
+  if (!running) return;
+
+  const delta = time - lastTime;
+  lastTime = time;
+
+  /* Move lane markings */
+  document.querySelectorAll(".lane").forEach(line => {
+    let y = parseFloat(line.dataset.y);
+
+    y += speed;
+
+    if (y > window.innerHeight) {
+      y -= 1040;
+    }
+
+    line.dataset.y = y;
+    line.style.top = y + "px";
+  });
+
+  /* Spawn traffic */
+  spawnTimer += delta;
+
+  if (spawnTimer > 900 - Math.min(score * 2, 400)) {
+    spawnEnemy();
+    spawnTimer = 0;
+  }
+
+  /* Move enemies */
+  enemies.forEach((enemy, index) => {
+    enemy.y += speed;
+
+    enemy.el.style.top = enemy.y + "px";
+
+    if (collision(player, enemy.el)) {
+      gameOver();
+    }
+
+    if (enemy.y > window.innerHeight + 100) {
+      enemy.el.remove();
+      enemies.splice(index, 1);
+
+      score++;
+      scoreText.textContent = score;
+
+      /* Increase difficulty */
+      if (score % 10 === 0) {
+        speed += 1;
+        speedText.textContent =
+          Math.floor(speed / 5);
+      }
+    }
+  });
+
+  requestAnimationFrame(gameLoop);
+}
+
+/* Game over */
+function gameOver() {
+  running = false;
+
+  menu.style.display = "flex";
+
+  menu.innerHTML = `
+    <h1>💥 CRASH!</h1>
+    <p>Your score: <strong>${score}</strong></p>
+    <button onclick="startGame()">RACE AGAIN</button>
+  `;
+}
+</script>
+
+</body>
+</html>

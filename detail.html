@@ -148,7 +148,8 @@
         const { data: { user } } = await supabase.auth.getUser();
         supabase.from('downloads').insert({ user_id: user ? user.id : null, track_id: item.id }).then(() => {});
       });
-    } else if (itemType === 'beat' && item.preview_path) {
+    } else if (item.preview_path) {
+      // Paid track or beat with a preview clip
       const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.preview_path).data.publicUrl;
       audioEl.src = publicUrl;
       audioEl.classList.remove('hidden');
@@ -156,7 +157,7 @@
       actionBtn.textContent = 'Buy';
       actionBtn.href = `checkout.html?type=${itemType}&id=${item.id}`;
     } else {
-      // Paid track — no preview available for tracks currently
+      // Paid item with no preview available
       priceDisplay.textContent = `K${item.price}`;
       actionBtn.textContent = 'Buy';
       actionBtn.href = `checkout.html?type=${itemType}&id=${item.id}`;

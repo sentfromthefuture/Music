@@ -277,6 +277,7 @@
       btn.classList.add('active');
       isFree = btn.dataset.free === 'true';
       document.getElementById('amount-field').classList.toggle('hidden', isFree);
+      maybeShowWaveform();
     });
   });
 
@@ -364,9 +365,13 @@
     updatePreviewWindowPosition();
   });
 
+  function needsPreview() {
+    return selectedType === 'beat' || (selectedType === 'track' && !isFree);
+  }
+
   async function maybeShowWaveform() {
     const audioFile = document.getElementById('audio-input').files[0];
-    if (selectedType !== 'beat' || !audioFile) {
+    if (!needsPreview() || !audioFile) {
       waveformField.classList.add('hidden');
       decodedBuffer = null;
       return;
@@ -531,9 +536,11 @@
 
       const duration = decodedBuffer ? Math.round(decodedBuffer.duration) : await getAudioDuration(audioFile);
 
-      // 3. Beat preview clip -> public-previews (beats only), trimmed from the user's chosen start point
+      // 3. Preview clip -> public-previews, trimmed from the user's chosen
+      // start point. Applies to beats and paid tracks (free tracks don't
+      // need one — the full file is already public).
       let previewPath = null;
-      if (selectedType === 'beat') {
+      if (selectedType === 'beat' || (selectedType === 'track' && !isFree)) {
         setStatus('Trimming preview clip…');
         const bufferForTrim = decodedBuffer || await (async () => {
           const ab = await audioFile.arrayBuffer();
@@ -560,7 +567,7 @@
         const reference_number = genRef(prefix);
         const payload = selectedType === 'beat'
           ? { owner_id: user.id, title, genre, bpm: bpm ? Number(bpm) : null, price, preview_path: previewPath, full_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration }
-          : { owner_id: user.id, title, genre, is_free: isFree, price, file_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration };
+          : { owner_id: user.id, title, genre, is_free: isFree, price, preview_path: previewPath, file_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration };
 
         const { data, error } = await supabase.from(table).insert(payload).select().single();
         if (!error) { insertedRow = data; break; }

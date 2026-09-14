@@ -40,7 +40,18 @@
   .stat-value { font-size: 20px; font-weight: 700; margin: 0; }
   .stat-label { font-size: 11px; color: var(--ink-muted); margin: 2px 0 0; }
 
-  h2 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+  h2 { font-size: 14px; font-weight: 600; margin: 16px 0 10px; }
+  h2:first-of-type { margin-top: 0; }
+  .list-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 14px; margin-bottom: 4px; }
+  .list-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+  .list-row:last-child { border-bottom: none; }
+  .list-row .name { font-size: 13px; font-weight: 500; }
+  .list-row .sub { font-size: 11px; color: var(--ink-muted); }
+  .list-row a.mini-btn, .list-row button.mini-btn {
+    flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 6px;
+    background: var(--accent); color: var(--accent-ink); text-decoration: none; border: none; cursor: pointer;
+  }
+  .list-row button.mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .fav-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .fav-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; text-decoration: none; color: inherit; display: block; }
   .fav-cover { aspect-ratio: 1; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; color: var(--ink-muted); font-size: 20px; background-size: cover; background-position: center; }
@@ -75,7 +86,7 @@
       <div class="stat-tile"><p class="stat-value" id="stat-purchases">–</p><p class="stat-label">Beats bought</p></div>
     </div>
 
-    <div class="card" id="artist-links" class="hidden">
+    <div class="card hidden" id="artist-links">
       <a href="my-uploads.html" class="link-row">My Uploads →</a>
       <a href="balance.html" class="link-row">My Balance & Withdrawals →</a>
     </div>
@@ -84,6 +95,12 @@
       <p style="font-size:13px;color:var(--ink-muted);margin:0 0 10px;">Want to sell your own tracks or beats?</p>
       <button type="button" id="become-artist-btn" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:600;cursor:pointer;">Become an Artist</button>
     </div>
+
+    <h2>My Downloads</h2>
+    <div id="downloads-list"><p class="empty-state">No downloads yet.</p></div>
+
+    <h2>My Purchases</h2>
+    <div id="purchases-list"><p class="empty-state">No purchases yet.</p></div>
 
     <h2>Favorites</h2>
     <div id="fav-grid" class="fav-grid"><p class="empty-state">No favorites yet.</p></div>
@@ -141,8 +158,85 @@
     document.getElementById('stat-downloads').textContent = downloadsCount || 0;
     document.getElementById('stat-purchases').textContent = purchasesCount || 0;
 
+    await loadDownloads(user.id);
+    await loadPurchases(user.id);
     await loadFavorites(user.id);
   })();
+
+  async function loadDownloads(userId) {
+    const { data: downloads } = await supabase.from('downloads').select('*').eq('user_id', userId).order('downloaded_at', { ascending: false });
+    const container = document.getElementById('downloads-list');
+    if (!downloads || downloads.length === 0) {
+      container.innerHTML = '<p class="empty-state">No downloads yet.</p>';
+      return;
+    }
+
+    const trackIds = [...new Set(downloads.map(d => d.track_id))];
+    const { data: tracks } = trackIds.length ? await supabase.from('tracks').select('id, title, file_path').in('id', trackIds) : { data: [] };
+    const trackMap = new Map((tracks || []).map(t => [t.id, t]));
+
+    container.innerHTML = '<div class="list-card"></div>';
+    const listCard = container.querySelector('.list-card');
+    for (const d of downloads) {
+      const track = trackMap.get(d.track_id);
+      if (!track) continue;
+      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(track.file_path).data.publicUrl;
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `
+        <div><p class="name">${escapeHtml(track.title)}</p><p class="sub">${new Date(d.downloaded_at).toLocaleDateString()}</p></div>
+        <a class="mini-btn" href="${publicUrl}" download>Download</a>
+      `;
+      listCard.appendChild(row);
+    }
+    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No downloads yet.</p>';
+  }
+
+  async function loadPurchases(userId) {
+    const { data: purchases } = await supabase.from('purchases').select('*').eq('buyer_id', userId).eq('status', 'fulfilled').order('fulfilled_at', { ascending: false });
+    const container = document.getElementById('purchases-list');
+    if (!purchases || purchases.length === 0) {
+      container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
+      return;
+    }
+
+    const trackIds = purchases.filter(p => p.item_type === 'track').map(p => p.item_id);
+    const beatIds = purchases.filter(p => p.item_type === 'beat').map(p => p.item_id);
+    const [{ data: trackItems }, { data: beatItems }] = await Promise.all([
+      trackIds.length ? supabase.from('tracks').select('id, title, file_path').in('id', trackIds) : { data: [] },
+      beatIds.length ? supabase.from('beats').select('id, title, full_path').in('id', beatIds) : { data: [] },
+    ]);
+    const itemMap = new Map();
+    (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { title: t.title, path: t.file_path }));
+    (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { title: b.title, path: b.full_path }));
+
+    container.innerHTML = '<div class="list-card"></div>';
+    const listCard = container.querySelector('.list-card');
+    for (const purchase of purchases) {
+      const item = itemMap.get(`${purchase.item_type}-${purchase.item_id}`);
+      if (!item) continue;
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `
+        <div><p class="name">${escapeHtml(item.title)}</p><p class="sub">K${purchase.amount}</p></div>
+        <button type="button" class="mini-btn" data-path="${escapeHtml(item.path)}">Get link</button>
+      `;
+      row.querySelector('.mini-btn').addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        e.target.textContent = 'Loading…';
+        const { data: signedData, error } = await supabase.storage.from('private-full').createSignedUrl(item.path, 3600);
+        if (error) {
+          e.target.textContent = 'Failed';
+          return;
+        }
+        window.open(signedData.signedUrl, '_blank');
+        e.target.textContent = 'Get link';
+        e.target.disabled = false;
+      });
+      listCard.appendChild(row);
+    }
+    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
+  }
 
   async function loadFavorites(userId) {
     const { data: favs } = await supabase.from('favorites').select('*').eq('user_id', userId).order('created_at', { ascending: false });

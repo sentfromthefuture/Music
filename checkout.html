@@ -220,9 +220,11 @@
       phoneStatus.classList.remove('error');
 
       let inserted = null;
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
         const reference_number = genRef();
         const { data, error } = await supabase.from('purchases').insert({
+          buyer_id: currentUser ? currentUser.id : null,
           buyer_contact: phone,
           item_id: item.id,
           item_type: table === 'beats' ? 'beat' : 'track',

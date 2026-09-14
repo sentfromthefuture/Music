@@ -71,6 +71,8 @@
   </div>
   <p class="sub">Tracks and beats from local artists.</p>
 
+  <input type="text" id="search-input" placeholder="Search tracks, beats, artists…" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--surface);color:var(--ink);font-family:inherit;margin-bottom:12px;" />
+
   <div class="chips" id="genre-chips">
     <button type="button" class="chip active" data-genre="all">All</button>
   </div>
@@ -95,6 +97,13 @@
   let favoriteKeys = new Set();
   let currentUserId = null;
   let activeGenre = 'all';
+  let searchTerm = '';
+
+  const searchInput = document.getElementById('search-input');
+  searchInput.addEventListener('input', () => {
+    searchTerm = searchInput.value.trim().toLowerCase();
+    renderGrid();
+  });
 
   function escapeHtml(str) {
     const div = document.createElement('div');
@@ -150,10 +159,17 @@
   }
 
   function renderGrid() {
-    const items = activeGenre === 'all' ? allItems : allItems.filter(i => i.genre === activeGenre);
+    let items = activeGenre === 'all' ? allItems : allItems.filter(i => i.genre === activeGenre);
+    if (searchTerm) {
+      items = items.filter(i =>
+        i.title.toLowerCase().includes(searchTerm) ||
+        (i.artistName || '').toLowerCase().includes(searchTerm) ||
+        (i.genre || '').toLowerCase().includes(searchTerm)
+      );
+    }
     grid.innerHTML = '';
     if (items.length === 0) {
-      grid.innerHTML = '<p class="empty-state">Nothing here yet.</p>';
+      grid.innerHTML = `<p class="empty-state">${searchTerm ? 'No results found.' : 'Nothing here yet.'}</p>`;
       return;
     }
     for (const item of items) {

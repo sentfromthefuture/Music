@@ -146,7 +146,7 @@
     // Social proof counts
     const countLabel = itemType === 'track' && item.is_free
       ? `${item.download_count || 0} downloads`
-      : `${item.play_count || 0} plays`;
+      : `${item.play_count || 0} plays · ${item.purchase_count || 0} buys`;
     document.getElementById('count-display').textContent = countLabel;
 
     const isFreeTrack = itemType === 'track' && item.is_free;

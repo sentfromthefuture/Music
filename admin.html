@@ -404,6 +404,9 @@
         const { error } = await supabase.from('purchases')
           .update({ status: 'fulfilled', fulfilled_at: new Date().toISOString(), download_url: signedData.signedUrl })
           .eq('id', purchase.id);
+        if (!error) {
+          supabase.rpc('increment_purchase_count', { p_item_type: purchase.item_type, p_item_id: purchase.item_id }).then(() => {});
+        }
         if (error) { alert(error.message); e.target.disabled = false; return; }
 
         const resultBox = card.querySelector('.signed-url-result');

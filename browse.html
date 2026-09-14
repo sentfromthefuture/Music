@@ -163,7 +163,7 @@
       const priceClass = item.itemType === 'track' && item.is_free ? 'free' : '';
       const countLabel = item.itemType === 'track' && item.is_free
         ? `${item.download_count || 0} downloads`
-        : `${item.play_count || 0} plays`;
+        : `${item.play_count || 0} plays · ${item.purchase_count || 0} buys`;
 
       const card = document.createElement('a');
       card.className = 'item-card';

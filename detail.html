@@ -47,6 +47,14 @@
 
   audio { width: 100%; margin-bottom: 16px; }
 
+  #player { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  #waveform { flex: 1; }
+  .play-btn {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: var(--accent); color: var(--accent-ink); font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
   .price { font-size: 22px; font-weight: 700; margin: 0 0 14px; }
   .price.free { color: var(--success); }
 
@@ -72,8 +80,12 @@
     </div>
     <p class="title" id="item-title">—</p>
     <p class="meta" id="item-meta">—</p>
+    <p class="meta" id="count-display" style="margin-top:-10px;"></p>
 
-    <audio id="preview-audio" controls class="hidden"></audio>
+    <div id="player" class="hidden">
+      <div id="waveform"></div>
+      <button type="button" id="play-btn" class="play-btn">▶</button>
+    </div>
 
     <p class="price" id="price-display">—</p>
     <a href="#" id="action-btn" class="action-btn">—</a>
@@ -82,6 +94,7 @@
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  import WaveSurfer from 'https://esm.sh/wavesurfer.js@7';
 
   const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
@@ -130,15 +143,45 @@
       document.getElementById('cover-icon').textContent = itemType === 'beat' ? '♫' : '♪';
     }
 
+    // Social proof counts
+    const countLabel = itemType === 'track' && item.is_free
+      ? `${item.download_count || 0} downloads`
+      : `${item.play_count || 0} plays`;
+    document.getElementById('count-display').textContent = countLabel;
+
     const isFreeTrack = itemType === 'track' && item.is_free;
-    const audioEl = document.getElementById('preview-audio');
     const priceDisplay = document.getElementById('price-display');
     const actionBtn = document.getElementById('action-btn');
 
+    let playCounted = false;
+    function loadPlayer(url) {
+      const wavesurfer = WaveSurfer.create({
+        container: '#waveform',
+        waveColor: '#c9cdc7',
+        progressColor: '#b8792c',
+        height: 56,
+        barWidth: 2,
+        barGap: 1,
+        cursorWidth: 0,
+        url,
+      });
+      const playBtn = document.getElementById('play-btn');
+      wavesurfer.on('play', () => {
+        playBtn.textContent = '⏸';
+        if (!playCounted) {
+          playCounted = true;
+          supabase.rpc('increment_play_count', { p_item_type: itemType, p_item_id: item.id }).then(() => {});
+        }
+      });
+      wavesurfer.on('pause', () => { playBtn.textContent = '▶'; });
+      wavesurfer.on('finish', () => { playBtn.textContent = '▶'; });
+      playBtn.addEventListener('click', () => wavesurfer.playPause());
+      document.getElementById('player').classList.remove('hidden');
+    }
+
     if (isFreeTrack) {
       const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.file_path).data.publicUrl;
-      audioEl.src = publicUrl;
-      audioEl.classList.remove('hidden');
+      loadPlayer(publicUrl);
       priceDisplay.textContent = 'Free';
       priceDisplay.classList.add('free');
       actionBtn.textContent = 'Download';
@@ -147,12 +190,12 @@
       actionBtn.addEventListener('click', async () => {
         const { data: { user } } = await supabase.auth.getUser();
         supabase.from('downloads').insert({ user_id: user ? user.id : null, track_id: item.id }).then(() => {});
+        supabase.rpc('increment_download_count', { p_track_id: item.id }).then(() => {});
       });
     } else if (item.preview_path) {
       // Paid track or beat with a preview clip
       const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.preview_path).data.publicUrl;
-      audioEl.src = publicUrl;
-      audioEl.classList.remove('hidden');
+      loadPlayer(publicUrl);
       priceDisplay.textContent = `K${item.price}`;
       actionBtn.textContent = 'Buy';
       actionBtn.href = `checkout.html?type=${itemType}&id=${item.id}`;

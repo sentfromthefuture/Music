@@ -161,6 +161,9 @@
       const isFavorited = favoriteKeys.has(key);
       const priceLabel = item.itemType === 'track' && item.is_free ? 'Free' : `K${item.price}`;
       const priceClass = item.itemType === 'track' && item.is_free ? 'free' : '';
+      const countLabel = item.itemType === 'track' && item.is_free
+        ? `${item.download_count || 0} downloads`
+        : `${item.play_count || 0} plays`;
 
       const card = document.createElement('a');
       card.className = 'item-card';
@@ -172,6 +175,7 @@
           <p class="item-title">${escapeHtml(item.title)}</p>
           <p class="item-artist">${escapeHtml(item.artistName)}</p>
           <p class="item-price ${priceClass}">${priceLabel}</p>
+          <p style="font-size:10px;color:var(--ink-muted);margin:2px 0 0;">${countLabel}</p>
         </div>
       `;
       card.querySelector('.heart-btn').addEventListener('click', (e) => {

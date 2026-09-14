@@ -90,7 +90,10 @@
       <h1>My Uploads</h1>
       <p class="sub">Track the status of everything you've uploaded.</p>
     </div>
-    <button type="button" id="notif-btn" class="hidden">Enable notifications</button>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+      <a href="upload.html" id="new-upload-link" style="background:var(--accent);color:var(--accent-ink);border-radius:8px;font-size:12px;font-weight:600;padding:8px 12px;text-decoration:none;white-space:nowrap;">+ New Upload</a>
+      <button type="button" id="notif-btn" class="hidden">Enable notifications</button>
+    </div>
   </div>
 
   <div id="gate" class="gate-msg">Checking access…</div>

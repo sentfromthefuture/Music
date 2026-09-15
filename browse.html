@@ -15,6 +15,7 @@
     --accent: #1e6feb;
     --accent-ink: #ffffff;
     --success: #2f8f5b;
+    --stat-green: #34b871;
     --danger: #b3261e;
     --radius: 10px;
   }
@@ -57,8 +58,7 @@
   .item-info { padding: 8px; }
   .item-title { font-size: 13px; font-weight: 500; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item-artist { font-size: 11px; color: var(--ink-muted); margin: 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .item-price { font-size: 11px; font-weight: 600; }
-  .item-price.free { color: var(--success); }
+  .item-price { font-size: 11px; font-weight: 700; color: var(--stat-green); }
 
   .empty-state, .loading-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; grid-column: 1 / -1; }
 
@@ -80,14 +80,22 @@
    * Horizontally scrolling rank rail.
    * The number of visible cards is NEVER set directly — it falls out of
    * (container width) / (card width), so it adapts on its own per device.
+   *
+   * Padding/margin note: the #1-#3 medal badge overlaps outside its card's
+   * top-left corner (see .rank-medal-badge), and this rail clips overflow
+   * on scroll. Extra padding-top/padding-left give that badge room to sit
+   * outside the card without being cut off, and the matching negative
+   * margin cancels it back out so cards still start flush with the
+   * section heading above — same visual position as before, just with a
+   * safe zone the badge can spill into.
    */
   .rank-scroll {
     display: flex;
     gap: 10px;
     overflow-x: auto;
     scroll-snap-type: x proximity;
-    padding: 2px 2px 10px;
-    margin: 0 -2px;
+    padding: 14px 2px 10px 14px;
+    margin: -12px -2px 0 -14px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none; /* Firefox: hide the scrollbar, scrolling still works */
   }
@@ -104,18 +112,59 @@
    * flex-shrink:0 stops cards from being squeezed to fit a fixed row.
    */
   .rank-card {
+    position: relative;
     flex: 0 0 clamp(126px, 32vw, 156px);
     flex-shrink: 0;
     scroll-snap-align: start;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  /* The actual visible card box lives in here, separately from .rank-card,
+     so it alone clips the artwork's rounded corners — leaving .rank-card
+     free to let the medal badge overflow outside that corner on top-3. */
+  .rank-card-body {
     display: flex;
     flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px;
     overflow: hidden;
-    text-decoration: none;
-    color: inherit;
   }
+
+  /* --- Ranks 1-3: metallic frame around the card body itself. The
+     transparent-border + double-background trick paints a gradient
+     "frame" while keeping the border-radius intact. --- */
+  .rank-card.medal-1 .rank-card-body {
+    border: 2px solid transparent;
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(135deg, #ffe9ad, #a1690c) border-box;
+    box-shadow: 0 4px 14px rgba(184,124,10,0.32), 0 0 0 1px rgba(184,124,10,0.12);
+    animation: goldPulse 3.2s ease-in-out infinite;
+  }
+  .rank-card.medal-2 .rank-card-body {
+    border: 2px solid transparent;
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(135deg, #f4f6f7, #767f88) border-box;
+    box-shadow: 0 4px 12px rgba(120,128,136,0.28), 0 0 0 1px rgba(120,128,136,0.10);
+  }
+  .rank-card.medal-3 .rank-card-body {
+    border: 2px solid transparent;
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(135deg, #e7ac78, #6f451e) border-box;
+    box-shadow: 0 4px 12px rgba(111,69,30,0.28), 0 0 0 1px rgba(111,69,30,0.10);
+  }
+  @keyframes goldPulse {
+    0%, 100% { box-shadow: 0 4px 14px rgba(184,124,10,0.32), 0 0 0 1px rgba(184,124,10,0.12); }
+    50%      { box-shadow: 0 4px 20px rgba(244,187,63,0.5),  0 0 0 1px rgba(244,187,63,0.22); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rank-card.medal-1 .rank-card-body { animation: none; }
+  }
+
   .rank-card-thumb {
     position: relative;
     aspect-ratio: 1;
@@ -125,12 +174,31 @@
     display: flex; align-items: center; justify-content: center;
     color: var(--ink-muted); font-size: 22px;
   }
+
+  /* Plain rank chip — used for #4 and beyond, unchanged from before. */
   .rank-card-badge {
     position: absolute; top: 6px; left: 6px;
     min-width: 20px; height: 20px; padding: 0 5px;
     border-radius: 10px; background: rgba(20,24,28,0.72); color: #fff;
     font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
   }
+
+  /* Premium shield badge for #1/#2/#3. It's a sibling of .rank-card-body
+     (not nested inside the clipped thumb), positioned to overlap the
+     card's top-left corner the way a real medal sits "on" a card rather
+     than "inside" it. Sized as a % of the card's own width via clamp, so
+     it scales with the card — never with the viewport — and stays
+     proportionate whether one card or five are visible on screen. */
+  .rank-medal-badge {
+    position: absolute;
+    top: -9px; left: -9px;
+    width: clamp(30px, 26%, 40px);
+    height: auto;
+    z-index: 3;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
+    pointer-events: none;
+  }
+
   .rank-card-menu {
     position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
     background: rgba(255,255,255,0.88); border: none; display: flex; align-items: center; justify-content: center;
@@ -139,10 +207,129 @@
   .rank-card-info { padding: 8px; min-width: 0; }
   .rank-card-title { font-size: 12.5px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rank-card-artist { font-size: 11px; color: var(--ink-muted); margin: 1px 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rank-card-stat { font-size: 11px; font-weight: 700; color: var(--accent); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Stat line: small mint icon + bold mint text, so "12 downloads" /
+     "3 this week" reads as a headline number, not incidental grey text. */
+  .rank-card-stat-row { display: flex; align-items: center; gap: 5px; min-width: 0; }
+  /*
+   * Trend icon: colour + arrow direction reflect movement vs. the rank
+   * this item held last time this list was rendered, not just "downloads"
+   * as a static concept. Up = better position (smaller rank number) =
+   * green. Down = worse position = red. No prior data, or no change,
+   * shows neutral/white — see computeTrend() below.
+   */
+  .rank-stat-icon {
+    flex-shrink: 0; width: 15px; height: 15px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; line-height: 1; font-weight: 700;
+  }
+  .rank-stat-icon.trend-up {
+    background: linear-gradient(135deg, #5bd394, var(--stat-green));
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(52,184,113,0.14);
+  }
+  .rank-stat-icon.trend-down {
+    background: linear-gradient(135deg, #ef8a84, var(--danger));
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(179,38,30,0.14);
+  }
+  .rank-stat-icon.trend-same {
+    background: #ffffff;
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+  }
+  .rank-card-stat {
+    font-size: 11px; font-weight: 700; color: var(--stat-green); margin: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 0 10px rgba(52,184,113,0.22);
+  }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="medalGoldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff6d9"/>
+      <stop offset="45%" stop-color="#f4bb3f"/>
+      <stop offset="100%" stop-color="#a1690c"/>
+    </linearGradient>
+    <linearGradient id="medalSilverGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#cad2d8"/>
+      <stop offset="100%" stop-color="#767f88"/>
+    </linearGradient>
+    <linearGradient id="medalBronzeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f3d0a6"/>
+      <stop offset="45%" stop-color="#c1803f"/>
+      <stop offset="100%" stop-color="#6f451e"/>
+    </linearGradient>
+
+    <path id="shieldPath" d="M24 3 L43 10 V27 C43 41 34 51 24 55 C14 51 5 41 5 27 V10 Z"/>
+    <clipPath id="shieldClip"><use href="#shieldPath"/></clipPath>
+    <g id="crownShape">
+      <path d="M11 15 L15 4 L20 11 L24 2 L28 11 L33 4 L37 15 Z"/>
+      <rect x="11" y="15" width="26" height="4" rx="1"/>
+    </g>
+    <path id="leafShape" d="M0 0 C4 -1 7 2 5 6 C2 5 -1 3 0 0 Z"/>
+  </defs>
+
+  <symbol id="medal-badge-1" viewBox="0 0 48 56">
+    <use href="#shieldPath" fill="url(#medalGoldGrad)" stroke="#7a5108" stroke-width="1.5"/>
+    <g clip-path="url(#shieldClip)"><polygon points="4,12 25,1 34,9 9,26" fill="#ffffff" opacity="0.3"/></g>
+    <g fill="#c98f1e">
+      <use href="#leafShape" transform="translate(4,42) rotate(200)"/>
+      <use href="#leafShape" transform="translate(2,34) rotate(215)"/>
+      <use href="#leafShape" transform="translate(2,26) rotate(230)"/>
+      <use href="#leafShape" transform="translate(4,18) rotate(245)"/>
+    </g>
+    <g fill="#c98f1e" transform="translate(48,0) scale(-1,1)">
+      <use href="#leafShape" transform="translate(4,42) rotate(200)"/>
+      <use href="#leafShape" transform="translate(2,34) rotate(215)"/>
+      <use href="#leafShape" transform="translate(2,26) rotate(230)"/>
+      <use href="#leafShape" transform="translate(4,18) rotate(245)"/>
+    </g>
+    <use href="#crownShape" fill="#f8dfa0" stroke="#7a5108" stroke-width="0.75"/>
+    <text x="24" y="41" text-anchor="middle" font-size="21" font-weight="800" font-family="Arial, sans-serif" fill="#3c2400">1</text>
+  </symbol>
+
+  <symbol id="medal-badge-2" viewBox="0 0 48 56">
+    <use href="#shieldPath" fill="url(#medalSilverGrad)" stroke="#5b6167" stroke-width="1.5"/>
+    <g clip-path="url(#shieldClip)"><polygon points="4,12 25,1 34,9 9,26" fill="#ffffff" opacity="0.35"/></g>
+    <g fill="#9aa3aa">
+      <use href="#leafShape" transform="translate(4,42) rotate(200)"/>
+      <use href="#leafShape" transform="translate(2,34) rotate(215)"/>
+      <use href="#leafShape" transform="translate(2,26) rotate(230)"/>
+      <use href="#leafShape" transform="translate(4,18) rotate(245)"/>
+    </g>
+    <g fill="#9aa3aa" transform="translate(48,0) scale(-1,1)">
+      <use href="#leafShape" transform="translate(4,42) rotate(200)"/>
+      <use href="#leafShape" transform="translate(2,34) rotate(215)"/>
+      <use href="#leafShape" transform="translate(2,26) rotate(230)"/>
+      <use href="#leafShape" transform="translate(4,18) rotate(245)"/>
+    </g>
+    <use href="#crownShape" fill="#eef1f3" stroke="#5b6167" stroke-width="0.75"/>
+    <text x="24" y="41" text-anchor="middle" font-size="21" font-weight="800" font-family="Arial, sans-serif" fill="#2c3135">2</text>
+  </symbol>
+
+  <symbol id="medal-badge-3" viewBox="0 0 48 56">
+    <use href="#shieldPath" fill="url(#medalBronzeGrad)" stroke="#4a2f14" stroke-width="1.5"/>
+    <g clip-path="url(#shieldClip)"><polygon points="4,12 25,1 34,9 9,26" fill="#ffffff" opacity="0.25"/></g>
+    <g fill="#8a5a2c">
+      <use href="#leafShape" transform="translate(4,42) rotate(200)"/>
+      <use href="#leafShape" transform="translate(2,34) rotate(215)"/>
+      <use href="#leafShape" transform="translate(2,26) rotate(230)"/>
+      <use href="#leafShape" transform="translate(4,18) rotate(245)"/>
+    </g>
+    <g fill="#8a5a2c" transform="translate(48,0) scale(-1,1)">
+      <use href="#leafShape" transform="translate(4,42) rotate(200)"/>
+      <use href="#leafShape" transform="translate(2,34) rotate(215)"/>
+      <use href="#leafShape" transform="translate(2,26) rotate(230)"/>
+      <use href="#leafShape" transform="translate(4,18) rotate(245)"/>
+    </g>
+    <use href="#crownShape" fill="#e3ad78" stroke="#4a2f14" stroke-width="0.75"/>
+    <text x="24" y="41" text-anchor="middle" font-size="21" font-weight="800" font-family="Arial, sans-serif" fill="#2c1707">3</text>
+  </symbol>
+</svg>
 <div class="wrap">
   <div class="header-row">
     <h1>Browse</h1>
@@ -243,6 +430,26 @@
     subscribeRealtime();
   })();
 
+  // --- Rank-movement memory: persisted in localStorage so "moved up /
+  // moved down / unchanged" survives page reloads, not just this session.
+  // Keyed per-section (Top Downloads vs Trending track separately). ---
+  function loadRankHistory(section) {
+    try { return JSON.parse(localStorage.getItem(`zami-rank-history:${section}`) || '{}'); }
+    catch { return {}; }
+  }
+  function saveRankHistory(section, historyObj) {
+    try { localStorage.setItem(`zami-rank-history:${section}`, JSON.stringify(historyObj)); }
+    catch { /* localStorage unavailable — trend indicator just stays neutral */ }
+  }
+  // Smaller rank number = higher on the list = "moved up" (green).
+  // No prior record for this item yet = treated as neutral, same as unchanged.
+  function computeTrend(prevRank, currentRank) {
+    if (prevRank == null) return 'same';
+    if (currentRank < prevRank) return 'up';
+    if (currentRank > prevRank) return 'down';
+    return 'same';
+  }
+
   // --- Top Downloads: derived straight from allItems, so it updates
   // automatically whenever the realtime subscription refreshes counts ---
   function renderTopDownloads() {
@@ -255,26 +462,47 @@
       container.innerHTML = '<p class="empty-state" style="padding:10px 0;">Nothing yet.</p>';
       return;
     }
+    const prevHistory = loadRankHistory('top-downloads');
+    const nextHistory = {};
     container.innerHTML = '';
     top.forEach((item, i) => {
-      container.appendChild(rankRow(item, i + 1, `${item.download_count || 0} downloads`));
+      const rank = i + 1;
+      const key = `${item.itemType}-${item.id}`;
+      const trend = computeTrend(prevHistory[key], rank);
+      nextHistory[key] = rank;
+      container.appendChild(rankRow(item, rank, `${item.download_count || 0} downloads`, trend));
     });
+    saveRankHistory('top-downloads', nextHistory);
   }
 
-  function rankRow(item, rank, statLabel) {
+  function rankRow(item, rank, statLabel, trend = 'same') {
     const row = document.createElement('a');
-    row.className = 'rank-card';
+    // Ranks 1-3 get the premium shield-badge + metallic frame treatment;
+    // everyone else keeps the plain dark rank pill from before.
+    const isMedal = rank >= 1 && rank <= 3;
+    row.className = isMedal ? `rank-card medal-${rank}` : 'rank-card';
     row.href = `detail.html?type=${item.itemType}&id=${item.id}`;
+    const plainBadge = isMedal ? '' : `<span class="rank-card-badge">${rank}</span>`;
+    const medalBadge = isMedal
+      ? `<svg class="rank-medal-badge" viewBox="0 0 48 56" aria-hidden="true"><use href="#medal-badge-${rank}"></use></svg>`
+      : '';
+    const arrowGlyph = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '–';
     row.innerHTML = `
-      <div class="rank-card-thumb" style="${item.cover_url ? `background-image:url(${item.cover_url})` : ''}">
-        ${item.cover_url ? '' : (item.itemType === 'beat' ? '♫' : '♪')}
-        <span class="rank-card-badge">${rank}</span>
-        <button type="button" class="rank-card-menu" aria-label="More options">⋮</button>
-      </div>
-      <div class="rank-card-info">
-        <p class="rank-card-title">${escapeHtml(item.title)}</p>
-        <p class="rank-card-artist">${escapeHtml(item.artistName || '')}</p>
-        <p class="rank-card-stat">${statLabel}</p>
+      ${medalBadge}
+      <div class="rank-card-body">
+        <div class="rank-card-thumb" style="${item.cover_url ? `background-image:url(${item.cover_url})` : ''}">
+          ${item.cover_url ? '' : (item.itemType === 'beat' ? '♫' : '♪')}
+          ${plainBadge}
+          <button type="button" class="rank-card-menu" aria-label="More options">⋮</button>
+        </div>
+        <div class="rank-card-info">
+          <p class="rank-card-title">${escapeHtml(item.title)}</p>
+          <p class="rank-card-artist">${escapeHtml(item.artistName || '')}</p>
+          <div class="rank-card-stat-row">
+            <span class="rank-stat-icon trend-${trend}" aria-label="Rank ${trend === 'up' ? 'moved up' : trend === 'down' ? 'moved down' : 'unchanged'}">${arrowGlyph}</span>
+            <p class="rank-card-stat">${statLabel}</p>
+          </div>
+        </div>
       </div>
     `;
     // Overflow menu is a stub for now — stopPropagation so it never triggers
@@ -322,10 +550,17 @@
       container.innerHTML = '<p class="empty-state" style="padding:10px 0;">Nothing trending yet.</p>';
       return;
     }
+    const prevHistory = loadRankHistory('trending');
+    const nextHistory = {};
     container.innerHTML = '';
     ranked.forEach(({ item, count }, i) => {
-      container.appendChild(rankRow(item, i + 1, `${count} this week`));
+      const rank = i + 1;
+      const key = `${item.itemType}-${item.id}`;
+      const trend = computeTrend(prevHistory[key], rank);
+      nextHistory[key] = rank;
+      container.appendChild(rankRow(item, rank, `${count} this week`, trend));
     });
+    saveRankHistory('trending', nextHistory);
   }
 
   // --- Realtime: new approved uploads and count changes appear live.

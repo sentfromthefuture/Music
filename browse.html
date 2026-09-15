@@ -157,16 +157,16 @@
   </div>
 
   <div class="rank-section-head rank-section-head--first">
-    <p class="section-title">🔥 Top Downloads</p>
-    <button type="button" class="see-all" data-target="top-downloads-list">See all →</button>
-  </div>
-  <div class="rank-scroll" id="top-downloads-list"><p class="empty-state">Nothing yet.</p></div>
-
-  <div class="rank-section-head">
     <p class="section-title">📈 Trending this week</p>
     <button type="button" class="see-all" data-target="trending-list">See all →</button>
   </div>
   <div class="rank-scroll" id="trending-list"><p class="empty-state">Nothing trending yet.</p></div>
+
+  <div class="rank-section-head">
+    <p class="section-title">🔥 Top Downloads</p>
+    <button type="button" class="see-all" data-target="top-downloads-list">See all →</button>
+  </div>
+  <div class="rank-scroll" id="top-downloads-list"><p class="empty-state">Nothing yet.</p></div>
 
   <div class="grid" id="grid">
     <p class="loading-state">Loading…</p>
@@ -315,7 +315,7 @@
       })
       .filter(Boolean)
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      .slice(0, 10);
 
     const container = document.getElementById('trending-list');
     if (ranked.length === 0) {

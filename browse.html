@@ -61,6 +61,16 @@
   .item-price.free { color: var(--success); }
 
   .empty-state, .loading-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; grid-column: 1 / -1; }
+
+  .section-title { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; margin: 28px 0 12px; }
+  .rank-list { display: flex; flex-direction: column; gap: 8px; }
+  .rank-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; text-decoration: none; color: inherit; }
+  .rank-badge { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .rank-thumb { flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px; background: var(--surface-alt); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: var(--ink-muted); font-size: 16px; }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-title { font-size: 13px; font-weight: 500; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-sub { font-size: 11px; color: var(--ink-muted); margin: 1px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-stat { flex-shrink: 0; font-size: 11px; color: var(--ink-muted); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -80,6 +90,12 @@
   <div class="grid" id="grid">
     <p class="loading-state">Loading…</p>
   </div>
+
+  <p class="section-title">🔥 Top Downloads</p>
+  <div class="rank-list" id="top-downloads-list"><p class="empty-state" style="padding:10px 0;">Nothing yet.</p></div>
+
+  <p class="section-title">📈 Trending this week</p>
+  <div class="rank-list" id="trending-list"><p class="empty-state" style="padding:10px 0;">Nothing trending yet.</p></div>
 </div>
 
 <script type="module">
@@ -98,6 +114,7 @@
   let currentUserId = null;
   let activeGenre = 'all';
   let searchTerm = '';
+  let nameMap = new Map();
 
   const searchInput = document.getElementById('search-input');
   searchInput.addEventListener('input', () => {
@@ -127,7 +144,7 @@
     // Fetch artist display names in one batch
     const ownerIds = [...new Set([...(tracks || []), ...(beats || [])].map(i => i.owner_id))];
     const { data: profiles } = ownerIds.length ? await supabase.from('profiles').select('id, display_name').in('id', ownerIds) : { data: [] };
-    const nameMap = new Map((profiles || []).map(p => [p.id, p.display_name || 'Unknown artist']));
+    nameMap = new Map((profiles || []).map(p => [p.id, p.display_name || 'Unknown artist']));
 
     allItems = [
       ...(tracks || []).map(t => ({ ...t, itemType: 'track', artistName: nameMap.get(t.owner_id) })),
@@ -136,7 +153,133 @@
 
     buildGenreChips();
     renderGrid();
+    renderTopDownloads();
+    loadTrending();
+    subscribeRealtime();
   })();
+
+  // --- Top Downloads: derived straight from allItems, so it updates
+  // automatically whenever the realtime subscription refreshes counts ---
+  function renderTopDownloads() {
+    const container = document.getElementById('top-downloads-list');
+    const top = allItems
+      .filter(i => i.itemType === 'track' && i.is_free)
+      .sort((a, b) => (b.download_count || 0) - (a.download_count || 0))
+      .slice(0, 20);
+    if (top.length === 0) {
+      container.innerHTML = '<p class="empty-state" style="padding:10px 0;">Nothing yet.</p>';
+      return;
+    }
+    container.innerHTML = '';
+    top.forEach((item, i) => {
+      container.appendChild(rankRow(item, i + 1, `${item.download_count || 0} downloads`));
+    });
+  }
+
+  function rankRow(item, rank, statLabel) {
+    const row = document.createElement('a');
+    row.className = 'rank-row';
+    row.href = `detail.html?type=${item.itemType}&id=${item.id}`;
+    row.innerHTML = `
+      <span class="rank-badge">${rank}</span>
+      <div class="rank-thumb" style="${item.cover_url ? `background-image:url(${item.cover_url})` : ''}">${item.cover_url ? '' : (item.itemType === 'beat' ? '♫' : '♪')}</div>
+      <div class="rank-info">
+        <p class="rank-title">${escapeHtml(item.title)}</p>
+        <p class="rank-sub">${escapeHtml(item.artistName || '')}</p>
+      </div>
+      <span class="rank-stat">${statLabel}</span>
+    `;
+    return row;
+  }
+
+  // --- Trending this week: recent downloads + recent fulfilled purchases,
+  // last 7 days. Computed once at load (not itself realtime-subscribed —
+  // a further enhancement if you want it ticking live too) ---
+  async function loadTrending() {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [{ data: recentDownloads }, { data: recentPurchases }] = await Promise.all([
+      supabase.from('downloads').select('track_id').gte('downloaded_at', since),
+      supabase.from('purchases').select('item_id, item_type').eq('status', 'fulfilled').gte('fulfilled_at', since),
+    ]);
+
+    const scores = new Map(); // key: `${type}-${id}` -> count
+    (recentDownloads || []).forEach(d => {
+      const key = `track-${d.track_id}`;
+      scores.set(key, (scores.get(key) || 0) + 1);
+    });
+    (recentPurchases || []).forEach(p => {
+      const key = `${p.item_type}-${p.item_id}`;
+      scores.set(key, (scores.get(key) || 0) + 1);
+    });
+
+    const ranked = [...scores.entries()]
+      .map(([key, count]) => {
+        const [type, id] = [key.slice(0, key.indexOf('-')), key.slice(key.indexOf('-') + 1)];
+        const item = allItems.find(i => i.itemType === type && i.id === id);
+        return item ? { item, count } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const container = document.getElementById('trending-list');
+    if (ranked.length === 0) {
+      container.innerHTML = '<p class="empty-state" style="padding:10px 0;">Nothing trending yet.</p>';
+      return;
+    }
+    container.innerHTML = '';
+    ranked.forEach(({ item, count }, i) => {
+      container.appendChild(rankRow(item, i + 1, `${count} this week`));
+    });
+  }
+
+  // --- Realtime: new approved uploads and count changes appear live.
+  // (Removals don't propagate to anonymous visitors — see note above;
+  // RLS blocks the event once a row is no longer 'approved'.)
+  function subscribeRealtime() {
+    supabase.channel('browse-tracks')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tracks' }, (payload) => handleRealtimeChange('track', payload))
+      .subscribe();
+    supabase.channel('browse-beats')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beats' }, (payload) => handleRealtimeChange('beat', payload))
+      .subscribe();
+  }
+
+  async function handleRealtimeChange(itemType, payload) {
+    if (payload.eventType === 'DELETE') {
+      const oldId = payload.old?.id;
+      allItems = allItems.filter(i => !(i.itemType === itemType && i.id === oldId));
+      renderGrid();
+      renderTopDownloads();
+      return;
+    }
+
+    const row = payload.new;
+    if (!row || row.status !== 'approved') return; // only approved rows reach us anyway, under RLS
+
+    const idx = allItems.findIndex(i => i.itemType === itemType && i.id === row.id);
+    if (idx === -1) {
+      // Brand new approved item — fetch its artist name if we don't have it cached
+      if (!nameMap.has(row.owner_id)) {
+        const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', row.owner_id).maybeSingle();
+        nameMap.set(row.owner_id, profile?.display_name || 'Unknown artist');
+      }
+      allItems = [{ ...row, itemType, artistName: nameMap.get(row.owner_id) }, ...allItems];
+      if (row.genre && !document.querySelector(`.chip[data-genre="${CSS.escape(row.genre)}"]`)) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip';
+        chip.dataset.genre = row.genre;
+        chip.textContent = row.genre;
+        genreChips.appendChild(chip);
+      }
+    } else {
+      allItems[idx] = { ...allItems[idx], ...row };
+    }
+    renderGrid();
+    renderTopDownloads();
+  }
 
   function buildGenreChips() {
     const genres = [...new Set(allItems.map(i => i.genre).filter(Boolean))];

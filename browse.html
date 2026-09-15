@@ -42,7 +42,7 @@
   }
   .chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 22px; }
   .item-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; text-decoration: none; color: inherit; display: block; position: relative; }
   .item-cover {
     aspect-ratio: 1; background: var(--surface-alt); display: flex; align-items: center; justify-content: center;
@@ -62,8 +62,13 @@
 
   .empty-state, .loading-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; grid-column: 1 / -1; }
 
-  /* --- Top Downloads / Trending: header row with "See all" --- */
-  .rank-section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 28px 0 10px; }
+  /* --- Top Downloads / Trending: header row with "See all" ---
+     These now sit right under the genre chips as featured discovery
+     sections, so the gap above each one is compact (chips already
+     carry their own bottom margin) rather than the larger gap you'd
+     want after a full catalogue block. */
+  .rank-section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 0 10px; }
+  .rank-section-head--first { margin-top: 4px; }
   .section-title { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; margin: 0; }
   .see-all {
     flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--accent);
@@ -151,11 +156,7 @@
     <button type="button" class="chip active" data-genre="all">All</button>
   </div>
 
-  <div class="grid" id="grid">
-    <p class="loading-state">Loading…</p>
-  </div>
-
-  <div class="rank-section-head">
+  <div class="rank-section-head rank-section-head--first">
     <p class="section-title">🔥 Top Downloads</p>
     <button type="button" class="see-all" data-target="top-downloads-list">See all →</button>
   </div>
@@ -166,6 +167,10 @@
     <button type="button" class="see-all" data-target="trending-list">See all →</button>
   </div>
   <div class="rank-scroll" id="trending-list"><p class="empty-state">Nothing trending yet.</p></div>
+
+  <div class="grid" id="grid">
+    <p class="loading-state">Loading…</p>
+  </div>
 </div>
 
 <script type="module">

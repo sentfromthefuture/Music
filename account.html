@@ -148,6 +148,9 @@
 
     <h2>Favorites</h2>
     <div id="fav-grid" class="fav-grid"><p class="empty-state">No favorites yet.</p></div>
+
+    <h2>Following</h2>
+    <div id="following-list"><p class="empty-state">Not following anyone yet.</p></div>
   </div>
 </div>
 
@@ -203,6 +206,7 @@
     await loadDownloads(user.id);
     await loadPurchases(user.id);
     await loadFavorites(user.id);
+    await loadFollowing(user.id);
   })();
 
   function renderProfileView(profile) {
@@ -407,6 +411,37 @@
     if (favGrid.children.length === 0) {
       favGrid.innerHTML = '<p class="empty-state">No favorites yet.</p>';
     }
+  }
+
+  async function loadFollowing(userId) {
+    const { data: follows } = await supabase.from('follows').select('artist_id, created_at').eq('follower_id', userId).order('created_at', { ascending: false });
+    const container = document.getElementById('following-list');
+    if (!follows || follows.length === 0) {
+      container.innerHTML = '<p class="empty-state">Not following anyone yet.</p>';
+      return;
+    }
+
+    const artistIds = follows.map(f => f.artist_id);
+    const { data: artistProfiles } = await supabase.from('profiles').select('id, display_name').in('id', artistIds);
+    const nameMap = new Map((artistProfiles || []).map(p => [p.id, p.display_name || 'Unknown artist']));
+
+    container.innerHTML = '<div class="list-card"></div>';
+    const listCard = container.querySelector('.list-card');
+    for (const f of follows) {
+      const name = nameMap.get(f.artist_id);
+      if (!name) continue; // artist profile may have been deleted since following
+      const row = document.createElement('a');
+      row.className = 'list-row';
+      row.href = `artist.html?id=${encodeURIComponent(f.artist_id)}`;
+      row.style.textDecoration = 'none';
+      row.style.color = 'inherit';
+      row.innerHTML = `
+        <div><p class="name">${escapeHtml(name)}</p></div>
+        <span class="mini-btn" style="pointer-events:none;">View →</span>
+      `;
+      listCard.appendChild(row);
+    }
+    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">Not following anyone yet.</p>';
   }
 
   document.getElementById('logout-btn').addEventListener('click', async () => {

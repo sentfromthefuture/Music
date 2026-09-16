@@ -137,6 +137,9 @@
         btn.classList.remove('following');
         btn.textContent = '+ Follow';
         updateFollowerCount(-1);
+      } else {
+        console.error('Unfollow failed:', error);
+        alert('Couldn\'t unfollow — try again.');
       }
     } else {
       const { error } = await supabase.from('follows').insert({ follower_id: currentUserId, artist_id: artistId });
@@ -145,6 +148,9 @@
         btn.classList.add('following');
         btn.textContent = '✓ Following';
         updateFollowerCount(1);
+      } else {
+        console.error('Follow failed:', error);
+        alert('Couldn\'t follow — try again.');
       }
     }
     btn.disabled = false;

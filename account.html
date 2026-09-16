@@ -31,9 +31,33 @@
   #logout-btn { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--ink-muted); font-size: 12px; padding: 6px 10px; cursor: pointer; }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .profile-head { display: flex; justify-content: space-between; align-items: flex-start; }
   .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 15px; color: var(--accent); margin-bottom: 10px; }
   .name { font-size: 15px; font-weight: 600; margin: 0; }
   .role { font-size: 12px; color: var(--ink-muted); margin: 2px 0 0; }
+  .bio { font-size: 13px; color: var(--ink-muted); margin: 8px 0 0; line-height: 1.5; }
+  .bio.empty { font-style: italic; }
+
+  #edit-profile-btn {
+    flex-shrink: 0; background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink-muted); font-size: 11px; font-weight: 600; padding: 6px 10px; cursor: pointer;
+  }
+
+  .edit-form label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-muted); margin: 12px 0 4px; }
+  .edit-form label:first-child { margin-top: 0; }
+  .edit-form input, .edit-form textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: var(--bg); color: var(--ink); resize: vertical;
+  }
+  .edit-form textarea { min-height: 70px; }
+  .edit-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .edit-actions button {
+    flex: 1; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  #save-profile-btn { border: none; background: var(--accent); color: var(--accent-ink); }
+  #save-profile-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  #cancel-profile-btn { border: 1px solid var(--border); background: var(--surface); color: var(--ink); }
+  .edit-error { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
 
   .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
   .stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
@@ -76,9 +100,29 @@
 
   <div id="content" class="hidden">
     <div class="card">
-      <div class="avatar" id="avatar-initials">?</div>
-      <p class="name" id="display-name">—</p>
-      <p class="role" id="role-label">—</p>
+      <div id="profile-view">
+        <div class="profile-head">
+          <div class="avatar" id="avatar-initials">?</div>
+          <button type="button" id="edit-profile-btn">Edit Profile</button>
+        </div>
+        <p class="name" id="display-name">—</p>
+        <p class="role" id="role-label">—</p>
+        <p class="bio empty" id="bio-display">No bio yet.</p>
+      </div>
+
+      <div id="profile-edit" class="edit-form hidden">
+        <label for="edit-display-name">Display name</label>
+        <input type="text" id="edit-display-name" maxlength="60" />
+
+        <label for="edit-bio" id="edit-bio-label" class="hidden">Bio</label>
+        <textarea id="edit-bio" maxlength="280" class="hidden" placeholder="Tell listeners a bit about yourself…"></textarea>
+
+        <p class="edit-error hidden" id="edit-error"></p>
+        <div class="edit-actions">
+          <button type="button" id="cancel-profile-btn">Cancel</button>
+          <button type="button" id="save-profile-btn">Save</button>
+        </div>
+      </div>
     </div>
 
     <div class="stats-grid">
@@ -134,11 +178,9 @@
     content.classList.remove('hidden');
     document.getElementById('logout-btn').classList.remove('hidden');
 
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-    const displayName = profile?.display_name || 'Unnamed';
-    document.getElementById('display-name').textContent = displayName;
-    document.getElementById('role-label').textContent = profile?.role === 'artist' ? 'Artist' : 'Listener';
-    document.getElementById('avatar-initials').textContent = displayName.slice(0, 2).toUpperCase();
+    let profile = (await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()).data;
+    renderProfileView(profile);
+    setupProfileEditing(user.id, () => profile, (updated) => { profile = updated; });
 
     if (profile?.role === 'artist') {
       document.getElementById('artist-links').classList.remove('hidden');
@@ -162,6 +204,90 @@
     await loadPurchases(user.id);
     await loadFavorites(user.id);
   })();
+
+  function renderProfileView(profile) {
+    const displayName = profile?.display_name || 'Unnamed';
+    document.getElementById('display-name').textContent = displayName;
+    document.getElementById('role-label').textContent = profile?.role === 'artist' ? 'Artist' : 'Listener';
+    document.getElementById('avatar-initials').textContent = displayName.slice(0, 2).toUpperCase();
+
+    const bioEl = document.getElementById('bio-display');
+    if (profile?.role === 'artist') {
+      bioEl.classList.remove('hidden');
+      if (profile?.bio) {
+        bioEl.textContent = profile.bio;
+        bioEl.classList.remove('empty');
+      } else {
+        bioEl.textContent = 'No bio yet.';
+        bioEl.classList.add('empty');
+      }
+    } else {
+      // Bio is only shown on the public artist profile page, so listeners don't need it here.
+      bioEl.classList.add('hidden');
+    }
+  }
+
+  function setupProfileEditing(userId, getProfile, setProfile) {
+    const viewEl = document.getElementById('profile-view');
+    const editEl = document.getElementById('profile-edit');
+    const nameInput = document.getElementById('edit-display-name');
+    const bioLabel = document.getElementById('edit-bio-label');
+    const bioInput = document.getElementById('edit-bio');
+    const errorEl = document.getElementById('edit-error');
+    const saveBtn = document.getElementById('save-profile-btn');
+
+    document.getElementById('edit-profile-btn').addEventListener('click', () => {
+      const profile = getProfile();
+      nameInput.value = profile?.display_name || '';
+      errorEl.classList.add('hidden');
+
+      const isArtist = profile?.role === 'artist';
+      bioLabel.classList.toggle('hidden', !isArtist);
+      bioInput.classList.toggle('hidden', !isArtist);
+      bioInput.value = isArtist ? (profile?.bio || '') : '';
+
+      viewEl.classList.add('hidden');
+      editEl.classList.remove('hidden');
+      nameInput.focus();
+    });
+
+    document.getElementById('cancel-profile-btn').addEventListener('click', () => {
+      editEl.classList.add('hidden');
+      viewEl.classList.remove('hidden');
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      const newName = nameInput.value.trim();
+      if (!newName) {
+        errorEl.textContent = 'Display name can\'t be empty.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      const profile = getProfile();
+      const isArtist = profile?.role === 'artist';
+      const updates = { display_name: newName };
+      if (isArtist) updates.bio = bioInput.value.trim() || null;
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save';
+
+      if (error) {
+        errorEl.textContent = 'Something went wrong — try again.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      const updatedProfile = { ...profile, ...updates };
+      setProfile(updatedProfile);
+      renderProfileView(updatedProfile);
+      editEl.classList.add('hidden');
+      viewEl.classList.remove('hidden');
+    });
+  }
 
   async function loadDownloads(userId) {
     const { data: downloads } = await supabase.from('downloads').select('*').eq('user_id', userId).order('downloaded_at', { ascending: false });

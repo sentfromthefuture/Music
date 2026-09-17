@@ -179,14 +179,25 @@
       document.getElementById('player').classList.remove('hidden');
     }
 
+    // Builds a safe "Track Title.mp3" style filename from the item title + the
+    // real storage path's extension, for use with Supabase's `download` option
+    // (sets Content-Disposition so the browser saves with this name instead of
+    // the raw storage path/UUID).
+    function downloadFilename(title, storagePath) {
+      const ext = (storagePath.split('.').pop() || 'mp3').toLowerCase();
+      const safeTitle = (title || 'track').replace(/[\\/:*?"<>|]/g, '').trim();
+      return `${safeTitle}.${ext}`;
+    }
+
     if (isFreeTrack) {
-      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.file_path).data.publicUrl;
-      loadPlayer(publicUrl);
+      const filename = downloadFilename(item.title, item.file_path);
+      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.file_path, { download: filename }).data.publicUrl;
+      const playerUrl = supabase.storage.from('public-previews').getPublicUrl(item.file_path).data.publicUrl;
+      loadPlayer(playerUrl);
       priceDisplay.textContent = 'Free';
       priceDisplay.classList.add('free');
       actionBtn.textContent = 'Download';
       actionBtn.href = publicUrl;
-      actionBtn.setAttribute('download', '');
       actionBtn.addEventListener('click', async () => {
         const { data: { user } } = await supabase.auth.getUser();
         supabase.from('downloads').insert({ user_id: user ? user.id : null, track_id: item.id }).then(() => {});

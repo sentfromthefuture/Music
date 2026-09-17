@@ -186,7 +186,9 @@
 
     if (isFreeTrack) {
       document.getElementById('free-section').classList.remove('hidden');
-      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.file_path).data.publicUrl;
+      const ext = (item.file_path.split('.').pop() || 'mp3').toLowerCase();
+      const safeTitle = (item.title || 'track').replace(/[\\/:*?"<>|]/g, '').trim();
+      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(item.file_path, { download: `${safeTitle}.${ext}` }).data.publicUrl;
       document.getElementById('free-download-link').href = publicUrl;
     } else {
       document.getElementById('buy-section').classList.remove('hidden');

@@ -396,9 +396,11 @@
         e.target.disabled = true;
         if (!item.path) { alert('Could not find the file for this item.'); e.target.disabled = false; return; }
 
+        const ext = (item.path.split('.').pop() || 'mp3').toLowerCase();
+        const safeTitle = (item.title || 'track').replace(/[\\/:*?"<>|]/g, '').trim();
         const { data: signedData, error: signedErr } = await supabase.storage
           .from('private-full')
-          .createSignedUrl(item.path, 86400); // 24h — buyer may not check back within an hour
+          .createSignedUrl(item.path, 86400, { download: `${safeTitle}.${ext}` }); // 24h — buyer may not check back within an hour
         if (signedErr) { alert(signedErr.message); e.target.disabled = false; return; }
 
         const { error } = await supabase.from('purchases')

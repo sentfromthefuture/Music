@@ -444,7 +444,9 @@
     for (const d of downloads) {
       const track = trackMap.get(d.track_id);
       if (!track) continue;
-      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(track.file_path).data.publicUrl;
+      const ext = (track.file_path.split('.').pop() || 'mp3').toLowerCase();
+      const safeTitle = (track.title || 'track').replace(/[\\/:*?"<>|]/g, '').trim();
+      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(track.file_path, { download: `${safeTitle}.${ext}` }).data.publicUrl;
       const row = document.createElement('div');
       row.className = 'list-row';
       row.innerHTML = `
@@ -488,7 +490,9 @@
       row.querySelector('.mini-btn').addEventListener('click', async (e) => {
         e.target.disabled = true;
         e.target.textContent = 'Loading…';
-        const { data: signedData, error } = await supabase.storage.from('private-full').createSignedUrl(item.path, 3600);
+        const ext = (item.path.split('.').pop() || 'mp3').toLowerCase();
+        const safeTitle = (item.title || 'track').replace(/[\\/:*?"<>|]/g, '').trim();
+        const { data: signedData, error } = await supabase.storage.from('private-full').createSignedUrl(item.path, 3600, { download: `${safeTitle}.${ext}` });
         if (error) {
           e.target.textContent = 'Failed';
           return;

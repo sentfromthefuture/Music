@@ -12,7 +12,7 @@
     --border: #dfe2de;
     --ink: #14181c;
     --ink-muted: #5b6560;
-    --accent: #b8792c;
+    --accent: #1e6feb;
     --accent-ink: #ffffff;
     --success: #2f8f5b;
     --warn-bg: #fbeed9;
@@ -114,7 +114,7 @@
         </div>
 
         <div id="waiting-step" class="hidden">
-          <p class="status-line" style="margin-top:14px;">Submitted — waiting for confirmation. This page will update automatically.</p>
+          <p class="status-line" style="margin-top:14px;">Submitted — waiting for confirmation. Once approved, your download link will appear on your account profile, so feel free to leave this page.</p>
         </div>
 
         <div id="fulfilled-step" class="hidden">
@@ -251,7 +251,7 @@
       purchaseRow = inserted;
       document.getElementById('ref-number').textContent = inserted.reference_number;
       document.getElementById('pay-instructions').innerHTML =
-        `Pay <strong>K${item.price}</strong> to <strong>097X XXX XXX</strong> (MoMo), then paste your payment confirmation SMS below.`;
+        `Send Money for <strong>K${item.price}</strong> (the exact amount) via MoMo to <strong>0573 678 363</strong>, then paste your payment confirmation SMS below. Once your payment is approved, a download link will appear on your account profile — you're free to leave this page after submitting.`;
       phoneStep.classList.add('hidden');
       payStep.classList.remove('hidden');
 

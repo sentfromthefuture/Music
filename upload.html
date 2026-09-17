@@ -299,7 +299,8 @@
         <span>Reference</span>
         <strong id="ref-number">—</strong>
       </div>
-      <p class="pay-instructions">Pay the listing fee to <strong>097X XXX XXX</strong> (MoMo), then paste your payment confirmation SMS below.</p>
+      <p class="pay-instructions">Send <strong>K25</strong> to <strong>0573678363</strong> using <strong>Send Money</strong> (not Withdraw, so there's no extra charge). Then paste your payment SMS below.</p>
+      <p class="fee-note" style="font-size:12px;color:var(--ink-muted);margin:-8px 0 14px;">Why we charge this: it helps us check every upload and stops fake or spam uploads. You only pay it once per upload — it's not a subscription.</p>
       <textarea id="sms-input" placeholder="Paste your payment confirmation SMS"></textarea>
       <button type="button" class="primary" id="sms-submit-btn"><span>Submit for review</span></button>
       <p class="status-line" id="sms-status-line"></p>
@@ -320,7 +321,7 @@
   // --- Fill these in from your Supabase project settings ---
   const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
-  const LISTING_FEE_TEXT = 'K100'; // shown in the pay instructions, adjust as needed
+  const LISTING_FEE_TEXT = 'K25'; // shown in the pay instructions, adjust as needed
   // -----------------------------------------------------------
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -691,7 +692,7 @@
     document.getElementById('pending-title').textContent = row.title;
     document.getElementById('ref-number').textContent = row.reference_number;
     document.querySelector('.pay-instructions').innerHTML =
-      `Pay the listing fee (<strong>${LISTING_FEE_TEXT}</strong>) to <strong>097X XXX XXX</strong> (MoMo), then paste your payment confirmation SMS below.`;
+      `Send <strong>${LISTING_FEE_TEXT}</strong> to <strong>0573678363</strong> using <strong>Send Money</strong> (not Withdraw, so there's no extra charge). Then paste your payment SMS below.`;
 
     const statusLabel = document.getElementById('pending-status-label');
     const reviewFlow = document.getElementById('review-flow');

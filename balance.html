@@ -12,7 +12,7 @@
     --border: #dfe2de;
     --ink: #14181c;
     --ink-muted: #5b6560;
-    --accent: #b8792c;
+    --accent: #1e6feb;
     --accent-ink: #ffffff;
     --success: #2f8f5b;
     --warn-bg: #fbeed9;
@@ -33,6 +33,9 @@
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
   .balance-label { font-size: 12px; color: var(--ink-muted); margin: 0 0 2px; }
   .balance-value { font-size: 28px; font-weight: 700; margin: 0 0 14px; }
+  .split-note { font-size: 12px; color: var(--ink-muted); margin: -8px 0 14px; }
+  .payout-row { border-top: 1px solid var(--border); padding-top: 12px; margin-bottom: 14px; }
+  .payout-row .balance-value { font-size: 20px; color: var(--accent); margin: 0; }
 
   label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; }
   label:first-of-type { margin-top: 0; }
@@ -77,6 +80,12 @@
     <div class="card">
       <p class="balance-label">Available balance</p>
       <p class="balance-value" id="balance-value">K0</p>
+      <p class="split-note">Artists keep 80% of all revenue — the platform keeps 20% to cover running costs.</p>
+
+      <div class="payout-row">
+        <p class="balance-label">You'll receive (80%)</p>
+        <p class="balance-value" id="balance-value-payout">K0</p>
+      </div>
 
       <div id="pending-banner" class="pending-banner hidden"></div>
       <div id="paid-banner" class="paid-banner hidden"></div>
@@ -203,6 +212,7 @@
     const result = await computeArtistBalance(currentUser.id);
     currentBalance = result.balance;
     document.getElementById('balance-value').textContent = `K${result.balance}`;
+    document.getElementById('balance-value-payout').textContent = `K${Math.round(result.balance * 0.8)}`;
     document.getElementById('stat-sold').textContent = result.soldCount;
 
     const [{ count: liveTracks }, { count: liveBeats }] = await Promise.all([

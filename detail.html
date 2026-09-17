@@ -12,38 +12,87 @@
     --border: #dfe2de;
     --ink: #14181c;
     --ink-muted: #5b6560;
-    --accent: #b8792c;
+    --accent: #1e6feb;
     --accent-ink: #ffffff;
-    --success: #2f8f5b;
+    --lime: #65a30d;
+    --lime-ink: #ffffff;
     --danger: #b3261e;
     --radius: 10px;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    position: relative;
+    overflow-x: hidden;
   }
-  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
-  a.back { font-size: 13px; color: var(--ink-muted); text-decoration: none; display: inline-block; margin-bottom: 14px; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  /* --- Animated background --- */
+  .bg-blobs { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.24; }
+  .blob-1 { width: 280px; height: 280px; background: var(--accent); top: -90px; left: -70px; animation: float1 16s ease-in-out infinite; }
+  .blob-2 { width: 240px; height: 240px; background: var(--lime); bottom: -80px; right: -60px; animation: float2 20s ease-in-out infinite; }
+  @keyframes float1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(30px, 40px) scale(1.12); } }
+  @keyframes float2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-30px, -24px) scale(1.14); } }
+  @media (prefers-reduced-motion: reduce) {
+    .blob { animation: none !important; }
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .header-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  a.back {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--ink); font-size: 16px;
+    transition: background 0.2s ease;
+  }
+  a.back:active { background: var(--border); }
+  .eq { display: flex; align-items: flex-end; gap: 4px; height: 18px; }
+  .eq span { width: 4px; border-radius: 2px; transform-origin: bottom; animation: eq 1.1s ease-in-out infinite; }
+  .eq span:nth-child(1) { height: 40%; background: var(--accent); animation-delay: 0s; }
+  .eq span:nth-child(2) { height: 75%; background: var(--lime); animation-delay: 0.15s; }
+  .eq span:nth-child(3) { height: 100%; background: var(--accent); animation-delay: 0.3s; }
+  .eq span:nth-child(4) { height: 60%; background: var(--lime); animation-delay: 0.45s; }
+  @keyframes eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    .eq span { animation: none; transform: scaleY(0.7); }
+  }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
+    box-shadow: 0 1px 2px rgba(20, 24, 28, 0.03); animation: rise 0.5s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none !important; }
+  }
+
+  .cover-frame {
+    padding: 4px; border-radius: calc(var(--radius) + 4px); margin-bottom: 14px;
+    background: conic-gradient(from 180deg, var(--accent), var(--lime), var(--accent));
+  }
   .cover {
     aspect-ratio: 1; border-radius: var(--radius); background: var(--surface-alt);
     display: flex; align-items: center; justify-content: center; color: var(--ink-muted); font-size: 40px;
-    background-size: cover; background-position: center; margin-bottom: 14px; position: relative;
+    background-size: cover; background-position: center; position: relative; overflow: hidden;
   }
   .heart-btn {
     position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%;
     background: rgba(255,255,255,0.9); border: none; display: flex; align-items: center; justify-content: center;
-    font-size: 17px; cursor: pointer; color: var(--ink-muted);
+    font-size: 17px; cursor: pointer; color: var(--ink-muted); transition: transform 0.15s ease;
   }
-  .heart-btn.favorited { color: var(--danger); }
+  .heart-btn:active { transform: scale(0.9); }
+  .heart-btn.favorited { color: var(--danger); animation: pop 0.3s ease; }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
 
   .title { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
   .meta { font-size: 13px; color: var(--ink-muted); margin: 0 0 16px; }
+  #count-display { display: flex; align-items: center; gap: 6px; }
+  #count-display:not(:empty)::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--lime); flex-shrink: 0; }
 
   audio { width: 100%; margin-bottom: 16px; }
 
@@ -53,30 +102,55 @@
     flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; border: none;
     background: var(--accent); color: var(--accent-ink); font-size: 15px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 3px rgba(30, 111, 235, 0.15); transition: transform 0.12s ease;
   }
+  .play-btn:active { transform: scale(0.94); }
 
-  .price { font-size: 22px; font-weight: 700; margin: 0 0 14px; }
-  .price.free { color: var(--success); }
+  .price { font-size: 22px; font-weight: 700; margin: 0 0 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .price.free { color: var(--lime); }
 
   a.action-btn, button.action-btn {
-    display: block; width: 100%; text-align: center; padding: 12px; border: none; border-radius: 8px;
-    background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 12px; border: none; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #3a7ff0); color: var(--accent-ink);
+    font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 14px rgba(30, 111, 235, 0.25);
+  }
+  a.action-btn:active, button.action-btn:active { transform: scale(0.98); }
+  .price.free ~ a.action-btn, .price.free ~ button.action-btn {
+    background: linear-gradient(135deg, var(--lime), #7cbf1f); box-shadow: 0 4px 14px rgba(101, 163, 13, 0.25);
   }
 
   .gate-msg, .empty-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; }
+  .gate-msg { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .gate-msg { animation: none; }
+  }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
+<div class="bg-blobs" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+</div>
+
 <div class="wrap">
-  <a href="browse.html" class="back">← Back to Browse</a>
+  <div class="header-row">
+    <a href="browse.html" class="back" aria-label="Back to Browse">←</a>
+    <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  </div>
 
   <div id="loading" class="gate-msg">Loading…</div>
 
   <div id="content" class="hidden card">
-    <div class="cover" id="cover">
-      <button type="button" class="heart-btn" id="heart-btn">♡</button>
-      <span id="cover-icon"></span>
+    <div class="cover-frame">
+      <div class="cover" id="cover">
+        <button type="button" class="heart-btn" id="heart-btn">♡</button>
+        <span id="cover-icon"></span>
+      </div>
     </div>
     <p class="title" id="item-title">—</p>
     <p class="meta" id="item-meta">—</p>
@@ -158,7 +232,7 @@
       const wavesurfer = WaveSurfer.create({
         container: '#waveform',
         waveColor: '#c9cdc7',
-        progressColor: '#b8792c',
+        progressColor: '#1e6feb',
         height: 56,
         barWidth: 2,
         barGap: 1,

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Account — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --danger: #b3261e;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+  #logout-btn { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--ink-muted); font-size: 12px; padding: 6px 10px; cursor: pointer; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .profile-head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 15px; color: var(--accent); margin-bottom: 10px; }
+  .name { font-size: 15px; font-weight: 600; margin: 0; }
+  .role { font-size: 12px; color: var(--ink-muted); margin: 2px 0 0; }
+  .bio { font-size: 13px; color: var(--ink-muted); margin: 8px 0 0; line-height: 1.5; }
+  .bio.empty { font-style: italic; }
+
+  #edit-profile-btn {
+    flex-shrink: 0; background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink-muted); font-size: 11px; font-weight: 600; padding: 6px 10px; cursor: pointer;
+  }
+
+  .edit-form label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-muted); margin: 12px 0 4px; }
+  .edit-form label:first-child { margin-top: 0; }
+  .edit-form input, .edit-form textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: var(--bg); color: var(--ink); resize: vertical;
+  }
+  .edit-form textarea { min-height: 70px; }
+  .edit-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .edit-actions button {
+    flex: 1; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  #save-profile-btn { border: none; background: var(--accent); color: var(--accent-ink); }
+  #save-profile-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  #cancel-profile-btn { border: 1px solid var(--border); background: var(--surface); color: var(--ink); }
+  .edit-error { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .stat-value { font-size: 20px; font-weight: 700; margin: 0; }
+  .stat-label { font-size: 11px; color: var(--ink-muted); margin: 2px 0 0; }
+
+  h2 { font-size: 14px; font-weight: 600; margin: 16px 0 10px; }
+  h2:first-of-type { margin-top: 0; }
+  .list-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 14px; margin-bottom: 4px; }
+  .list-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; }
+  .list-row:last-child { border-bottom: none; }
+  .list-row .name { font-size: 13px; font-weight: 500; }
+  .list-row .sub { font-size: 11px; color: var(--ink-muted); }
+  .list-row a.mini-btn, .list-row button.mini-btn {
+    flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 6px;
+    background: var(--accent); color: var(--accent-ink); text-decoration: none; border: none; cursor: pointer;
+  }
+  .list-row button.mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .fav-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .fav-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; text-decoration: none; color: inherit; display: block; }
+  .fav-cover { aspect-ratio: 1; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; color: var(--ink-muted); font-size: 20px; background-size: cover; background-position: center; }
+  .fav-info { padding: 8px; }
+  .fav-title { font-size: 12px; font-weight: 500; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fav-artist { font-size: 11px; color: var(--ink-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  a.link-row { display: block; font-size: 13px; color: var(--accent); text-decoration: none; padding: 4px 0; }
+
+  .gate-msg, .empty-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 30px 0; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header-row">
+    <h1>My Account</h1>
+    <button type="button" id="logout-btn" class="hidden">Log out</button>
+  </div>
+
+  <div id="gate" class="gate-msg">Checking access…</div>
+
+  <div id="content" class="hidden">
+    <div class="card">
+      <div id="profile-view">
+        <div class="profile-head">
+          <div class="avatar" id="avatar-initials">?</div>
+          <button type="button" id="edit-profile-btn">Edit Profile</button>
+        </div>
+        <p class="name" id="display-name">—</p>
+        <p class="role" id="role-label">—</p>
+        <p class="bio empty" id="bio-display">No bio yet.</p>
+      </div>
+
+      <div id="profile-edit" class="edit-form hidden">
+        <label for="edit-display-name">Display name</label>
+        <input type="text" id="edit-display-name" maxlength="60" />
+
+        <label for="edit-bio" id="edit-bio-label" class="hidden">Bio</label>
+        <textarea id="edit-bio" maxlength="280" class="hidden" placeholder="Tell listeners a bit about yourself…"></textarea>
+
+        <p class="edit-error hidden" id="edit-error"></p>
+        <div class="edit-actions">
+          <button type="button" id="cancel-profile-btn">Cancel</button>
+          <button type="button" id="save-profile-btn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-tile"><p class="stat-value" id="stat-downloads">–</p><p class="stat-label">Downloads</p></div>
+      <div class="stat-tile"><p class="stat-value" id="stat-purchases">–</p><p class="stat-label">Beats bought</p></div>
+    </div>
+
+    <div class="card hidden" id="artist-links">
+      <a href="my-uploads.html" class="link-row">My Uploads →</a>
+      <a href="balance.html" class="link-row">My Balance & Withdrawals →</a>
+    </div>
+
+    <div class="card hidden" id="become-artist-card">
+      <p style="font-size:13px;color:var(--ink-muted);margin:0 0 10px;">Want to sell your own tracks or beats?</p>
+      <button type="button" id="become-artist-btn" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-size:13px;font-weight:600;cursor:pointer;">Become an Artist</button>
+    </div>
+
+    <h2>My Downloads</h2>
+    <div id="downloads-list"><p class="empty-state">No downloads yet.</p></div>
+
+    <h2>My Purchases</h2>
+    <div id="purchases-list"><p class="empty-state">No purchases yet.</p></div>
+
+    <h2>Favorites</h2>
+    <div id="fav-grid" class="fav-grid"><p class="empty-state">No favorites yet.</p></div>
+
+    <h2>Following</h2>
+    <div id="following-list"><p class="empty-state">Not following anyone yet.</p></div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const gate = document.getElementById('gate');
+  const content = document.getElementById('content');
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  (async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      gate.innerHTML = 'Please <a href="login.html">log in</a> first.';
+      return;
+    }
+    gate.classList.add('hidden');
+    content.classList.remove('hidden');
+    document.getElementById('logout-btn').classList.remove('hidden');
+
+    let profile = (await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()).data;
+    renderProfileView(profile);
+    setupProfileEditing(user.id, () => profile, (updated) => { profile = updated; });
+
+    if (profile?.role === 'artist') {
+      document.getElementById('artist-links').classList.remove('hidden');
+    } else {
+      const becomeCard = document.getElementById('become-artist-card');
+      becomeCard.classList.remove('hidden');
+      document.getElementById('become-artist-btn').addEventListener('click', async () => {
+        const { error } = await supabase.from('profiles').update({ role: 'artist' }).eq('id', user.id);
+        if (!error) window.location.reload();
+      });
+    }
+
+    const [{ count: downloadsCount }, { count: purchasesCount }] = await Promise.all([
+      supabase.from('downloads').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('purchases').select('*', { count: 'exact', head: true }).eq('buyer_id', user.id).eq('status', 'fulfilled'),
+    ]);
+    document.getElementById('stat-downloads').textContent = downloadsCount || 0;
+    document.getElementById('stat-purchases').textContent = purchasesCount || 0;
+
+    await loadDownloads(user.id);
+    await loadPurchases(user.id);
+    await loadFavorites(user.id);
+    await loadFollowing(user.id);
+  })();
+
+  function renderProfileView(profile) {
+    const displayName = profile?.display_name || 'Unnamed';
+    document.getElementById('display-name').textContent = displayName;
+    document.getElementById('role-label').textContent = profile?.role === 'artist' ? 'Artist' : 'Listener';
+    document.getElementById('avatar-initials').textContent = displayName.slice(0, 2).toUpperCase();
+
+    const bioEl = document.getElementById('bio-display');
+    if (profile?.role === 'artist') {
+      bioEl.classList.remove('hidden');
+      if (profile?.bio) {
+        bioEl.textContent = profile.bio;
+        bioEl.classList.remove('empty');
+      } else {
+        bioEl.textContent = 'No bio yet.';
+        bioEl.classList.add('empty');
+      }
+    } else {
+      // Bio is only shown on the public artist profile page, so listeners don't need it here.
+      bioEl.classList.add('hidden');
+    }
+  }
+
+  function setupProfileEditing(userId, getProfile, setProfile) {
+    const viewEl = document.getElementById('profile-view');
+    const editEl = document.getElementById('profile-edit');
+    const nameInput = document.getElementById('edit-display-name');
+    const bioLabel = document.getElementById('edit-bio-label');
+    const bioInput = document.getElementById('edit-bio');
+    const errorEl = document.getElementById('edit-error');
+    const saveBtn = document.getElementById('save-profile-btn');
+
+    document.getElementById('edit-profile-btn').addEventListener('click', () => {
+      const profile = getProfile();
+      nameInput.value = profile?.display_name || '';
+      errorEl.classList.add('hidden');
+
+      const isArtist = profile?.role === 'artist';
+      bioLabel.classList.toggle('hidden', !isArtist);
+      bioInput.classList.toggle('hidden', !isArtist);
+      bioInput.value = isArtist ? (profile?.bio || '') : '';
+
+      viewEl.classList.add('hidden');
+      editEl.classList.remove('hidden');
+      nameInput.focus();
+    });
+
+    document.getElementById('cancel-profile-btn').addEventListener('click', () => {
+      editEl.classList.add('hidden');
+      viewEl.classList.remove('hidden');
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      const newName = nameInput.value.trim();
+      if (!newName) {
+        errorEl.textContent = 'Display name can\'t be empty.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      const profile = getProfile();
+      const isArtist = profile?.role === 'artist';
+      const updates = { display_name: newName };
+      if (isArtist) updates.bio = bioInput.value.trim() || null;
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save';
+
+      if (error) {
+        errorEl.textContent = 'Something went wrong — try again.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      const updatedProfile = { ...profile, ...updates };
+      setProfile(updatedProfile);
+      renderProfileView(updatedProfile);
+      editEl.classList.add('hidden');
+      viewEl.classList.remove('hidden');
+    });
+  }
+
+  async function loadDownloads(userId) {
+    const { data: downloads } = await supabase.from('downloads').select('*').eq('user_id', userId).order('downloaded_at', { ascending: false });
+    const container = document.getElementById('downloads-list');
+    if (!downloads || downloads.length === 0) {
+      container.innerHTML = '<p class="empty-state">No downloads yet.</p>';
+      return;
+    }
+
+    const trackIds = [...new Set(downloads.map(d => d.track_id))];
+    const { data: tracks } = trackIds.length ? await supabase.from('tracks').select('id, title, file_path').in('id', trackIds) : { data: [] };
+    const trackMap = new Map((tracks || []).map(t => [t.id, t]));
+
+    container.innerHTML = '<div class="list-card"></div>';
+    const listCard = container.querySelector('.list-card');
+    for (const d of downloads) {
+      const track = trackMap.get(d.track_id);
+      if (!track) continue;
+      const publicUrl = supabase.storage.from('public-previews').getPublicUrl(track.file_path).data.publicUrl;
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `
+        <div><p class="name">${escapeHtml(track.title)}</p><p class="sub">${new Date(d.downloaded_at).toLocaleDateString()}</p></div>
+        <a class="mini-btn" href="${publicUrl}" download>Download</a>
+      `;
+      listCard.appendChild(row);
+    }
+    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No downloads yet.</p>';
+  }
+
+  async function loadPurchases(userId) {
+    const { data: purchases } = await supabase.from('purchases').select('*').eq('buyer_id', userId).eq('status', 'fulfilled').order('fulfilled_at', { ascending: false });
+    const container = document.getElementById('purchases-list');
+    if (!purchases || purchases.length === 0) {
+      container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
+      return;
+    }
+
+    const trackIds = purchases.filter(p => p.item_type === 'track').map(p => p.item_id);
+    const beatIds = purchases.filter(p => p.item_type === 'beat').map(p => p.item_id);
+    const [{ data: trackItems }, { data: beatItems }] = await Promise.all([
+      trackIds.length ? supabase.from('tracks').select('id, title, file_path').in('id', trackIds) : { data: [] },
+      beatIds.length ? supabase.from('beats').select('id, title, full_path').in('id', beatIds) : { data: [] },
+    ]);
+    const itemMap = new Map();
+    (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { title: t.title, path: t.file_path }));
+    (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { title: b.title, path: b.full_path }));
+
+    container.innerHTML = '<div class="list-card"></div>';
+    const listCard = container.querySelector('.list-card');
+    for (const purchase of purchases) {
+      const item = itemMap.get(`${purchase.item_type}-${purchase.item_id}`);
+      if (!item) continue;
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `
+        <div><p class="name">${escapeHtml(item.title)}</p><p class="sub">K${purchase.amount}</p></div>
+        <button type="button" class="mini-btn" data-path="${escapeHtml(item.path)}">Get link</button>
+      `;
+      row.querySelector('.mini-btn').addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        e.target.textContent = 'Loading…';
+        const { data: signedData, error } = await supabase.storage.from('private-full').createSignedUrl(item.path, 3600);
+        if (error) {
+          e.target.textContent = 'Failed';
+          return;
+        }
+        window.open(signedData.signedUrl, '_blank');
+        e.target.textContent = 'Get link';
+        e.target.disabled = false;
+      });
+      listCard.appendChild(row);
+    }
+    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
+  }
+
+  async function loadFavorites(userId) {
+    const { data: favs } = await supabase.from('favorites').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    const favGrid = document.getElementById('fav-grid');
+    if (!favs || favs.length === 0) {
+      favGrid.innerHTML = '<p class="empty-state">No favorites yet.</p>';
+      return;
+    }
+
+    const trackIds = favs.filter(f => f.item_type === 'track').map(f => f.item_id);
+    const beatIds = favs.filter(f => f.item_type === 'beat').map(f => f.item_id);
+
+    const [{ data: trackItems }, { data: beatItems }] = await Promise.all([
+      trackIds.length ? supabase.from('tracks').select('*').in('id', trackIds) : { data: [] },
+      beatIds.length ? supabase.from('beats').select('*').in('id', beatIds) : { data: [] },
+    ]);
+
+    const ownerIds = [...new Set([...(trackItems || []), ...(beatItems || [])].map(i => i.owner_id))];
+    const { data: profiles } = ownerIds.length ? await supabase.from('profiles').select('id, display_name').in('id', ownerIds) : { data: [] };
+    const nameMap = new Map((profiles || []).map(p => [p.id, p.display_name || 'Unknown artist']));
+
+    const itemMap = new Map();
+    (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { ...t, itemType: 'track' }));
+    (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { ...b, itemType: 'beat' }));
+
+    favGrid.innerHTML = '';
+    for (const fav of favs) {
+      const item = itemMap.get(`${fav.item_type}-${fav.item_id}`);
+      if (!item) continue; // item may have been removed/deleted since favoriting
+      const card = document.createElement('a');
+      card.className = 'fav-card';
+      card.href = `detail.html?type=${item.itemType}&id=${item.id}`;
+      card.innerHTML = `
+        <div class="fav-cover" style="${item.cover_url ? `background-image:url(${item.cover_url})` : ''}">${item.cover_url ? '' : (item.itemType === 'beat' ? '♫' : '♪')}</div>
+        <div class="fav-info">
+          <p class="fav-title">${escapeHtml(item.title)}</p>
+          <p class="fav-artist">${escapeHtml(nameMap.get(item.owner_id) || '')}</p>
+        </div>
+      `;
+      favGrid.appendChild(card);
+    }
+    if (favGrid.children.length === 0) {
+      favGrid.innerHTML = '<p class="empty-state">No favorites yet.</p>';
+    }
+  }
+
+  async function loadFollowing(userId) {
+    const { data: follows } = await supabase.from('follows').select('artist_id, created_at').eq('follower_id', userId).order('created_at', { ascending: false });
+    const container = document.getElementById('following-list');
+    if (!follows || follows.length === 0) {
+      container.innerHTML = '<p class="empty-state">Not following anyone yet.</p>';
+      return;
+    }
+
+    const artistIds = follows.map(f => f.artist_id);
+    const { data: artistProfiles } = await supabase.from('profiles').select('id, display_name').in('id', artistIds);
+    const nameMap = new Map((artistProfiles || []).map(p => [p.id, p.display_name || 'Unknown artist']));
+
+    container.innerHTML = '<div class="list-card"></div>';
+    const listCard = container.querySelector('.list-card');
+    for (const f of follows) {
+      const name = nameMap.get(f.artist_id);
+      if (!name) continue; // artist profile may have been deleted since following
+      const row = document.createElement('a');
+      row.className = 'list-row';
+      row.href = `artist.html?id=${encodeURIComponent(f.artist_id)}`;
+      row.style.textDecoration = 'none';
+      row.style.color = 'inherit';
+      row.innerHTML = `
+        <div><p class="name">${escapeHtml(name)}</p></div>
+        <span class="mini-btn" style="pointer-events:none;">View →</span>
+      `;
+      listCard.appendChild(row);
+    }
+    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">Not following anyone yet.</p>';
+  }
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = 'login.html';
+  });
+</script>
+</body>
+</html>

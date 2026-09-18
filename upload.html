@@ -618,7 +618,7 @@
         const coverPath = `${user.id}/cover-${ts}.${coverExt}`;
         const { error: coverErr } = await supabase.storage
           .from('public-previews')
-          .upload(coverPath, coverFile);
+          .upload(coverPath, coverFile, { cacheControl: '31536000' });
         if (coverErr) throw coverErr;
         coverUrl = supabase.storage.from('public-previews').getPublicUrl(coverPath).data.publicUrl;
       }
@@ -631,7 +631,7 @@
       const fullBucket = (selectedType === 'track' && isFree) ? 'public-previews' : 'private-full';
       const { error: fullErr } = await supabase.storage
         .from(fullBucket)
-        .upload(fullPath, audioFile);
+        .upload(fullPath, audioFile, { cacheControl: '31536000' });
       if (fullErr) throw fullErr;
 
       const duration = decodedBuffer ? Math.round(decodedBuffer.duration) : await getAudioDuration(audioFile);
@@ -654,7 +654,7 @@
         previewPath = `${user.id}/${ts}-preview.wav`;
         const { error: previewErr } = await supabase.storage
           .from('public-previews')
-          .upload(previewPath, previewBlob);
+          .upload(previewPath, previewBlob, { cacheControl: '31536000' });
         if (previewErr) throw previewErr;
       }
 

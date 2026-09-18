@@ -122,6 +122,13 @@
     background: linear-gradient(135deg, var(--lime), #7cbf1f); box-shadow: 0 4px 14px rgba(101, 163, 13, 0.25);
   }
 
+  .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+  .btn-row .action-btn { flex: 1; }
+  button.action-btn.secondary {
+    background: var(--surface-alt); color: var(--ink); box-shadow: none; border: 1px solid var(--border);
+  }
+  .price.free ~ .btn-row button.action-btn.secondary { background: var(--surface-alt); box-shadow: none; }
+
   .gate-msg, .empty-state { text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; }
   .gate-msg { animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
@@ -163,6 +170,10 @@
 
     <p class="price" id="price-display">—</p>
     <a href="#" id="action-btn" class="action-btn">—</a>
+    <div class="btn-row">
+      <button type="button" id="open-app-btn" class="action-btn secondary hidden">Open in App</button>
+      <button type="button" id="share-btn" class="action-btn secondary">Share</button>
+    </div>
   </div>
 </div>
 
@@ -174,6 +185,36 @@
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // --- App deep-link / APK fallback config ---
+  // APP_SCHEME must match an intent-filter (<data android:scheme="zami" />) on
+  // your main activity in AndroidManifest.xml.
+  const APP_SCHEME = 'zami';
+  // Set this to wherever the APK download/landing page lives.
+  const APK_DOWNLOAD_URL = 'download.html';
+  // Have the native WebView append this to its User-Agent (WebView.getSettings()
+  // .setUserAgentString(current + " ZAMIApp/1.0")) so pages can tell they're
+  // running inside the app vs. an external mobile browser.
+  const APP_UA_MARKER = 'ZAMIApp';
+  const isInApp = navigator.userAgent.includes(APP_UA_MARKER);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  function deepLinkUrl(type, id) {
+    return `${APP_SCHEME}://${type}/${id}`;
+  }
+
+  // Tries the app first; if it's not installed the page stays visible and we
+  // fall back to the APK page after a short wait. If the app *does* open,
+  // the tab gets backgrounded and the fallback is cancelled.
+  function openInAppOrFallback(type, id) {
+    const timer = setTimeout(() => {
+      window.location.href = APK_DOWNLOAD_URL;
+    }, 1500);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clearTimeout(timer);
+    }, { once: true });
+    window.location.href = deepLinkUrl(type, id);
+  }
 
   const params = new URLSearchParams(window.location.search);
   const itemType = params.get('type');
@@ -253,6 +294,52 @@
       document.getElementById('player').classList.remove('hidden');
     }
 
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    // Draws a 1080x1080 shareable card: cover art + title + artist, with a
+    // "Get it on ZAMI" line so recipients know where the track is from.
+    async function buildShareCard() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#14181c';
+      ctx.fillRect(0, 0, 1080, 1080);
+
+      if (item.cover_url) {
+        try {
+          const img = await loadImage(item.cover_url);
+          ctx.drawImage(img, 90, 90, 900, 900);
+        } catch {
+          // cover failed to load (e.g. CORS) — fall back to a plain panel
+          ctx.fillStyle = '#2a2f34';
+          ctx.fillRect(90, 90, 900, 900);
+        }
+      } else {
+        ctx.fillStyle = '#2a2f34';
+        ctx.fillRect(90, 90, 900, 900);
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 56px sans-serif';
+      ctx.fillText(item.title, 90, 1010);
+
+      ctx.fillStyle = '#c9cdc7';
+      ctx.font = '32px sans-serif';
+      ctx.fillText(`${artistName} · Get it on ZAMI`, 90, 1050);
+
+      return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    }
+
     // Builds a safe "Track Title.mp3" style filename from the item title + the
     // real storage path's extension, for use with Supabase's `download` option
     // (sets Content-Disposition so the browser saves with this name instead of
@@ -315,6 +402,55 @@
         if (!error) { isFavorited = true; heartBtn.textContent = '♥'; heartBtn.classList.add('favorited'); }
       }
       heartBtn.disabled = false;
+    });
+
+    // Open in App / Share buttons
+    const openAppBtn = document.getElementById('open-app-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const shareUrl = window.location.href;
+
+    if (isAndroid && !isInApp) {
+      openAppBtn.classList.remove('hidden');
+      openAppBtn.addEventListener('click', () => openInAppOrFallback(itemType, item.id));
+
+      // Auto-attempt once per browser session for visitors arriving from a
+      // shared link, so tapping the link itself opens the app if installed.
+      const attemptedKey = 'zami-deeplink-attempted';
+      if (!sessionStorage.getItem(attemptedKey)) {
+        sessionStorage.setItem(attemptedKey, '1');
+        openInAppOrFallback(itemType, item.id);
+      }
+    }
+
+    shareBtn.addEventListener('click', async () => {
+      shareBtn.disabled = true;
+      shareBtn.textContent = 'Preparing…';
+      try {
+        const blob = await buildShareCard();
+        const file = new File([blob], `${item.title}.png`, { type: 'image/png' });
+        const shareData = {
+          files: [file],
+          title: item.title,
+          text: `Check out "${item.title}" by ${artistName} on ZAMI`,
+          url: shareUrl,
+        };
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share(shareData);
+        } else if (navigator.share) {
+          // Some browsers support share() without file support
+          await navigator.share({ title: shareData.title, text: shareData.text, url: shareData.url });
+        } else {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `${item.title}.png`;
+          link.click();
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') console.error('Share failed:', err);
+      } finally {
+        shareBtn.disabled = false;
+        shareBtn.textContent = 'Share';
+      }
     });
   })();
 </script>

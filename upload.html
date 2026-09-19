@@ -317,6 +317,8 @@
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm';
+  import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/+esm';
 
   // --- Fill these in from your Supabase project settings ---
   const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
@@ -325,6 +327,57 @@
   // -----------------------------------------------------------
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // --- Audio compression (FFmpeg.wasm, single-thread — no COOP/COEP headers needed) ---
+  let ffmpegInstance = null;
+  let ffmpegLoadPromise = null;
+
+  async function getFFmpeg(onStatus) {
+    if (ffmpegInstance) return ffmpegInstance;
+    if (!ffmpegLoadPromise) {
+      ffmpegLoadPromise = (async () => {
+        onStatus?.('Preparing compressor… (first time only)');
+        const instance = new FFmpeg();
+        const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+        await instance.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+        ffmpegInstance = instance;
+        return instance;
+      })();
+    }
+    return ffmpegLoadPromise;
+  }
+
+  // Compresses a File/Blob to Opus (.opus, audio/ogg) using libopus @ 96kbps.
+  // inputExt tells ffmpeg what container/codec to expect on the way in
+  // (e.g. 'mp3', 'wav') since the in-memory filename needs an extension.
+  async function compressAudio(fileOrBlob, inputExt, onStatus) {
+    const instance = await getFFmpeg(onStatus);
+    const inputName = `input.${inputExt}`;
+    const outputName = 'output.opus';
+    onStatus?.('Compressing audio…');
+    await instance.writeFile(inputName, await fetchFile(fileOrBlob));
+    await instance.exec(['-i', inputName, '-c:a', 'libopus', '-b:a', '96k', outputName]);
+    const data = await instance.readFile(outputName);
+    await instance.deleteFile(inputName);
+    await instance.deleteFile(outputName);
+    return new Blob([data.buffer], { type: 'audio/ogg' });
+  }
+
+  // Wraps compressAudio with a fallback: if compression fails for any reason
+  // (unsupported device, out of memory, etc.), upload the original file
+  // rather than blocking the artist's upload entirely.
+  async function compressAudioSafe(fileOrBlob, inputExt, fallbackContentType, onStatus) {
+    try {
+      const blob = await compressAudio(fileOrBlob, inputExt, onStatus);
+      return { blob, ext: 'opus', contentType: 'audio/ogg', compressed: true };
+    } catch (err) {
+      console.error('Audio compression failed, uploading original file instead:', err);
+      return { blob: fileOrBlob, ext: inputExt, contentType: fallbackContentType, compressed: false };
+    }
+  }
 
   // Toggles a primary button between its normal label and a spinner + label,
   // and disables it while a request is in flight (prevents double-submits).
@@ -626,12 +679,21 @@
       // 2. Full audio file. Free tracks go to public-previews (so they're
       // instantly downloadable by anyone); paid tracks and beats go to
       // private-full (gated behind a purchase and a signed URL).
+      const fullCompressed = await compressAudioSafe(
+        audioFile,
+        ext,
+        audioFile.type || 'application/octet-stream',
+        setStatus
+      );
       setStatus('Uploading audio file…');
-      const fullPath = `${user.id}/${ts}-full.${ext}`;
+      const fullPath = `${user.id}/${ts}-full.${fullCompressed.ext}`;
       const fullBucket = (selectedType === 'track' && isFree) ? 'public-previews' : 'private-full';
       const { error: fullErr } = await supabase.storage
         .from(fullBucket)
-        .upload(fullPath, audioFile, { cacheControl: '31536000' });
+        .upload(fullPath, fullCompressed.blob, {
+          cacheControl: '31536000',
+          contentType: fullCompressed.contentType,
+        });
       if (fullErr) throw fullErr;
 
       const duration = decodedBuffer ? Math.round(decodedBuffer.duration) : await getAudioDuration(audioFile);
@@ -651,10 +713,20 @@
           return b;
         })();
         const previewBlob = trimBufferToWav(bufferForTrim, previewStartSeconds, PREVIEW_LENGTH);
-        previewPath = `${user.id}/${ts}-preview.wav`;
+        const previewCompressed = await compressAudioSafe(
+          previewBlob,
+          'wav',
+          'audio/wav',
+          setStatus
+        );
+        setStatus('Uploading preview clip…');
+        previewPath = `${user.id}/${ts}-preview.${previewCompressed.ext}`;
         const { error: previewErr } = await supabase.storage
           .from('public-previews')
-          .upload(previewPath, previewBlob, { cacheControl: '31536000' });
+          .upload(previewPath, previewCompressed.blob, {
+            cacheControl: '31536000',
+            contentType: previewCompressed.contentType,
+          });
         if (previewErr) throw previewErr;
       }
 

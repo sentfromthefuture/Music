@@ -136,27 +136,47 @@
   }
 
   let currentUser = null;
+  let artistItemIds = { track: new Set(), beat: new Set() };
 
-  (async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      gate.innerHTML = 'Please <a href="login.html">log in</a> first.';
-      return;
-    }
-    const { data: roleCheck } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
-    if (!roleCheck || roleCheck.role !== 'artist') {
-      gate.textContent = 'This page is for artists only.';
-      return;
-    }
-    currentUser = user;
-    gate.classList.add('hidden');
-    content.classList.remove('hidden');
+  async function init() {
+    gate.classList.remove('hidden');
+    gate.innerHTML = 'Checking access…';
+    content.classList.add('hidden');
 
-    await loadProfile();
-    await loadBalanceAndStats();
-    await loadPendingWithdrawal();
-    subscribeToWithdrawals();
-  })();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        gate.innerHTML = 'Please <a href="login.html">log in</a> first.';
+        return;
+      }
+      const { data: roleCheck } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      if (!roleCheck || roleCheck.role !== 'artist') {
+        gate.textContent = 'This page is for artists only.';
+        return;
+      }
+      currentUser = user;
+      gate.classList.add('hidden');
+      content.classList.remove('hidden');
+
+      // Run independently so one slow/failed query doesn't block the rest —
+      // each piece shows its own state if it fails, instead of the whole page hanging.
+      await Promise.allSettled([
+        loadProfile(),
+        loadBalanceAndStats(),
+        loadPendingWithdrawal(),
+      ]);
+      subscribeToWithdrawals();
+      subscribeToSales();
+      subscribeToOwnItems();
+    } catch (err) {
+      gate.classList.remove('hidden');
+      content.classList.add('hidden');
+      gate.innerHTML = `Couldn't load your balance — check your connection.<br><button type="button" class="primary" id="retry-btn" style="margin-top:10px;">Retry</button>`;
+      document.getElementById('retry-btn').addEventListener('click', init);
+    }
+  }
+
+  init();
 
   async function loadProfile() {
     const { data: profile } = await supabase.from('profiles').select('momo_number').eq('id', currentUser.id).maybeSingle();
@@ -211,6 +231,8 @@
   async function loadBalanceAndStats() {
     const result = await computeArtistBalance(currentUser.id);
     currentBalance = result.balance;
+    artistItemIds.track = new Set(result.tracks.map(t => t.id));
+    artistItemIds.beat = new Set(result.beats.map(b => b.id));
     document.getElementById('balance-value').textContent = `K${result.balance}`;
     document.getElementById('balance-value-payout').textContent = `K${Math.round(result.balance * 0.8)}`;
     document.getElementById('stat-sold').textContent = result.soldCount;
@@ -325,6 +347,42 @@
           loadBalanceAndStats();
         }
       })
+      .subscribe();
+  }
+
+  // Purchases aren't scoped to artist_id, so this listens broadly and checks
+  // client-side whether the changed row is one of this artist's items —
+  // covers a sale being marked paid on another device/tab (e.g. by the admin).
+  let salesRefreshTimer = null;
+  function subscribeToSales() {
+    supabase
+      .channel(`sales-${currentUser.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'purchases',
+      }, (payload) => {
+        const row = payload.new || payload.old;
+        if (!row) return;
+        const isOwnItem = (row.item_type === 'track' && artistItemIds.track.has(row.item_id)) ||
+                           (row.item_type === 'beat' && artistItemIds.beat.has(row.item_id));
+        if (!isOwnItem) return;
+        // Debounce in case several sale updates land at once.
+        clearTimeout(salesRefreshTimer);
+        salesRefreshTimer = setTimeout(loadBalanceAndStats, 300);
+      })
+      .subscribe();
+  }
+
+  // Keeps "Live uploads" accurate if an item's status changes elsewhere
+  // (e.g. admin approves/takes down) while this page is open.
+  function subscribeToOwnItems() {
+    supabase
+      .channel(`own-items-${currentUser.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'tracks', filter: `owner_id=eq.${currentUser.id}`,
+      }, () => loadBalanceAndStats())
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'beats', filter: `owner_id=eq.${currentUser.id}`,
+      }, () => loadBalanceAndStats())
       .subscribe();
   }
 </script>

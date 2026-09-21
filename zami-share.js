@@ -637,7 +637,19 @@
 .zs-close{position:absolute;top:8px;right:8px;width:44px;height:44px;border:none;border-radius:50%;background:rgba(20,24,28,.06);font-size:18px;cursor:pointer;z-index:1}
 .zs-stage{display:flex;align-items:center;justify-content:center;min-height:200px;margin:28px 0 12px}
 .zs-img{display:block;width:auto;max-width:100%;max-height:56vh;max-height:56dvh;aspect-ratio:1080/1350;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
-.zs-loading{font-size:14px;color:#5b6570;animation:zs-pulse 1.4s ease-in-out infinite;text-align:center}
+.zs-img[hidden],.zs-loading[hidden],.zs-note[hidden]{display:none!important}
+.zs-loading{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+.zs-skel{position:relative;width:min(100%,300px);aspect-ratio:1080/1350;border-radius:14px;overflow:hidden;background:linear-gradient(160deg,#10203a,#0a0f1a);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+.zs-skel::after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.12) 50%,transparent 70%);transform:translateX(-100%);animation:zs-sheen 1.6s ease-in-out infinite}
+@keyframes zs-sheen{to{transform:translateX(100%)}}
+.zs-eq{display:flex;align-items:flex-end;gap:7px;height:64px}
+.zs-eq i{width:9px;height:100%;border-radius:5px;background:#1e6feb;transform-origin:bottom;animation:zs-bar 1s ease-in-out infinite}
+.zs-eq i:nth-child(even){background:#7cbf1f}
+.zs-eq i:nth-child(2){animation-delay:.15s}.zs-eq i:nth-child(3){animation-delay:.3s}.zs-eq i:nth-child(4){animation-delay:.45s}.zs-eq i:nth-child(5){animation-delay:.6s}
+@keyframes zs-bar{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+.zs-msg{margin:0;font-size:14px;color:#5b6570;text-align:center;min-height:20px}
+.zs-err .zs-skel{display:none}
+@media (prefers-reduced-motion:reduce){.zs-eq i,.zs-skel::after{animation:none}}
 @keyframes zs-pulse{0%,100%{opacity:.5}50%{opacity:1}}
 .zs-note{margin:0 0 10px;font-size:13px;line-height:1.35;color:#5b6570;text-align:center}
 .zs-row{display:flex;gap:10px}
@@ -647,7 +659,8 @@
 .zs-link{display:block;width:100%;min-height:48px;margin-top:6px;border:none;background:none;color:#1e6feb;font:600 15px ${FONT};cursor:pointer}
 `;
 
-  const modal = { el: null, img: null, loading: null, note: null, ac: null, url: null, res: null, token: 0, prevFocus: null, prevOverflow: '' };
+  const LOADING_MSGS = ['Reading your cover art…', 'Picking the colors…', 'Tuning the waveform…', 'Adding the finishing touches…'];
+  const modal = { el: null, img: null, loading: null, msg: null, timer: null, note: null, ac: null, url: null, res: null, token: 0, prevFocus: null, prevOverflow: '' };
 
   function ensureModal() {
     if (modal.el) return;
@@ -657,15 +670,23 @@
     el.innerHTML =
       '<div class="zs-sheet">' +
       '<button type="button" class="zs-close" data-a="close" aria-label="Close">✕</button>' +
-      '<div class="zs-stage"><div class="zs-loading">Creating your poster…</div><img class="zs-img" alt="Song promo poster" hidden></div>' +
+      '<div class="zs-stage"><div class="zs-loading"><div class="zs-skel"><div class="zs-eq"><i></i><i></i><i></i><i></i><i></i></div></div><p class="zs-msg"></p></div><img class="zs-img" alt="Song promo poster" hidden></div>' +
       '<p class="zs-note" hidden></p>' +
       '<div class="zs-row"><button type="button" class="zs-btn zs-primary" data-a="share" disabled>Share</button>' +
       '<button type="button" class="zs-btn" data-a="save" disabled>Save Image</button></div>' +
       '<button type="button" class="zs-link" data-a="copy">Copy Song Link</button>' +
       '</div>';
     document.body.appendChild(el);
-    modal.el = el; modal.img = el.querySelector('.zs-img'); modal.loading = el.querySelector('.zs-loading'); modal.note = el.querySelector('.zs-note');
+    modal.el = el; modal.img = el.querySelector('.zs-img'); modal.loading = el.querySelector('.zs-loading'); modal.msg = el.querySelector('.zs-msg'); modal.note = el.querySelector('.zs-note');
   }
+
+  function startLoading() {
+    stopLoading();
+    modal.loading.hidden = false; modal.loading.classList.remove('zs-err');
+    let i = 0; modal.msg.textContent = LOADING_MSGS[0];
+    modal.timer = setInterval(() => { i = (i + 1) % LOADING_MSGS.length; modal.msg.textContent = LOADING_MSGS[i]; }, 1800);
+  }
+  function stopLoading() { if (modal.timer) { clearInterval(modal.timer); modal.timer = null; } }
 
   function setNote(msg) { modal.note.textContent = msg || ''; modal.note.hidden = !msg; }
   function setBusy(disabled) { modal.el.querySelectorAll('.zs-btn').forEach((b) => { b.disabled = disabled; }); }
@@ -673,6 +694,7 @@
   function closeModal() {
     if (!modal.el || !modal.el.classList.contains('zs-open')) return;
     modal.token++;                                         // invalidates any in-flight generation
+    stopLoading();
     if (modal.ac) { modal.ac.abort(); modal.ac = null; }   // removes all listeners
     if (modal.url) { URL.revokeObjectURL(modal.url); modal.url = null; }
     modal.img.removeAttribute('src'); modal.img.hidden = true; modal.res = null;
@@ -688,7 +710,7 @@
     modal.prevFocus = document.activeElement;
     modal.prevOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
-    modal.loading.hidden = false; modal.loading.textContent = 'Creating your poster…';
+    startLoading();
     modal.img.hidden = true; setNote(''); setBusy(true);
     modal.el.querySelector('[data-a="copy"]').disabled = false;
     modal.el.classList.add('zs-open');
@@ -726,13 +748,14 @@
       if (token !== modal.token) return;                   // closed / reopened while generating
       modal.res = res;
       modal.url = URL.createObjectURL(res.blob);
-      modal.img.src = modal.url; modal.img.hidden = false; modal.loading.hidden = true;
+      modal.img.src = modal.url; modal.img.hidden = false; stopLoading(); modal.loading.hidden = true;
       setNote(res.warnings[0] || ''); setBusy(false);
       const first = modal.el.querySelector('[data-a="share"]'); if (first) first.focus();
     } catch (e) {
       if (token !== modal.token) return;
       console.error('[ZamiShare] generation failed', e);
-      modal.loading.textContent = 'Could not create the poster. You can still copy the link below.';
+      stopLoading(); modal.loading.classList.add('zs-err');
+      modal.msg.textContent = 'Could not create the poster. You can still copy the link below.';
     }
   }
 

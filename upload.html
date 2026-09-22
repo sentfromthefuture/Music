@@ -402,6 +402,18 @@
 
   // --- Waveform preview selector (beats only) ---
   let decodedBuffer = null;
+
+  // --- Beat preview watermark ---
+  // Upload a short (~1-1.5s) audio stinger somewhere public (e.g. a
+  // "public-previews" or dedicated "assets" bucket in Supabase) and paste
+  // its public URL below. This plays on a loop through the *full* beat
+  // preview so buyers can hear the whole arrangement without being able to
+  // lift a clean, usable copy. Leave BEAT_TAG_URL empty to skip tagging
+  // (preview will just be the full beat, downsampled).
+  const BEAT_TAG_URL = ''; // <-- e.g. 'https://xxxx.supabase.co/storage/v1/object/public/assets/tag.mp3'
+  const BEAT_TAG_INTERVAL = 18; // seconds between tag repeats
+  const BEAT_TAG_GAIN = 0.55; // 0-1: how loud the tag is relative to the beat when it plays
+  const BEAT_PREVIEW_SAMPLE_RATE = 22050; // downsample beat previews to keep upload size reasonable
   let previewStartSeconds = 0;
   const PREVIEW_LENGTH = 30;
 
@@ -484,6 +496,20 @@
     audioCtx.close();
 
     drawWaveform(decodedBuffer);
+    const waveformLabel = document.querySelector('#waveform-field label');
+
+    if (selectedType === 'beat') {
+      // Beats preview the whole track (with a watermark tag) — no clip to pick.
+      waveformLabel.textContent = 'Preview';
+      previewWindow.classList.add('hidden');
+      previewSlider.classList.add('hidden');
+      previewRangeLabel.textContent = 'Buyers hear the whole beat with a repeating watermark tag — no clip to choose.';
+      return;
+    }
+
+    waveformLabel.textContent = 'Choose preview section (30s)';
+    previewWindow.classList.remove('hidden');
+    previewSlider.classList.remove('hidden');
     previewStartSeconds = 0;
     const maxStart = Math.max(0, decodedBuffer.duration - PREVIEW_LENGTH);
     previewSlider.min = 0;
@@ -556,6 +582,82 @@
       }
     }
     return new Blob([arrBuf], { type: 'audio/wav' });
+  }
+
+  // Resample (and optionally remix channel count of) an AudioBuffer using
+  // OfflineAudioContext, which does proper interpolation (much better than
+  // naive sample-dropping) and handles stereo<->mono conversion for free.
+  async function resampleBuffer(buffer, targetSampleRate, targetChannels) {
+    const channels = targetChannels || buffer.numberOfChannels;
+    const frameCount = Math.ceil(buffer.duration * targetSampleRate);
+    const offline = new OfflineAudioContext(channels, frameCount, targetSampleRate);
+    const src = offline.createBufferSource();
+    src.buffer = buffer;
+    src.connect(offline.destination);
+    src.start();
+    return offline.startRendering();
+  }
+
+  // Fetches and decodes the watermark tag once, cached at the sample rate
+  // it's needed at (so it lines up sample-for-sample when mixed in).
+  let cachedTagBuffer = null;
+  let cachedTagRate = null;
+  async function loadTagBuffer(targetSampleRate) {
+    if (cachedTagBuffer && cachedTagRate === targetSampleRate) return cachedTagBuffer;
+    const res = await fetch(BEAT_TAG_URL);
+    if (!res.ok) throw new Error('Could not fetch watermark tag audio');
+    const arrayBuffer = await res.arrayBuffer();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const decoded = await ctx.decodeAudioData(arrayBuffer);
+    ctx.close();
+    const resampled = decoded.sampleRate === targetSampleRate
+      ? decoded
+      : await resampleBuffer(decoded, targetSampleRate, decoded.numberOfChannels);
+    cachedTagBuffer = resampled;
+    cachedTagRate = targetSampleRate;
+    return resampled;
+  }
+
+  // Loops `tagBuffer` on top of `buffer` every `intervalSeconds`, ducking the
+  // underlying beat under each tag hit so it stays clearly audible.
+  function mixTagRepeating(buffer, tagBuffer, intervalSeconds, gain) {
+    const sampleRate = buffer.sampleRate;
+    const numChannels = buffer.numberOfChannels;
+    const AudioCtxForBuffer = window.AudioContext || window.webkitAudioContext;
+    const tmpCtx = new AudioCtxForBuffer();
+    const out = tmpCtx.createBuffer(numChannels, buffer.length, sampleRate);
+    const intervalFrames = Math.floor(intervalSeconds * sampleRate);
+    const tagFrames = tagBuffer.length;
+    for (let ch = 0; ch < numChannels; ch++) {
+      const src = buffer.getChannelData(ch);
+      const dst = out.getChannelData(ch);
+      dst.set(src);
+      const tagCh = tagBuffer.getChannelData(Math.min(ch, tagBuffer.numberOfChannels - 1));
+      for (let start = 0; start < dst.length; start += intervalFrames) {
+        for (let i = 0; i < tagFrames && start + i < dst.length; i++) {
+          dst[start + i] = Math.max(-1, Math.min(1, dst[start + i] * (1 - gain) + tagCh[i] * gain));
+        }
+      }
+    }
+    tmpCtx.close();
+    return out;
+  }
+
+  // Builds a full-length, watermarked, size-reduced preview for a beat.
+  // Falls back to an un-tagged (but still downsampled) preview if the tag
+  // asset isn't configured or fails to load, so uploads never break on it.
+  async function buildBeatPreview(fullBuffer) {
+    const shrunk = await resampleBuffer(fullBuffer, BEAT_PREVIEW_SAMPLE_RATE, 1);
+    if (!BEAT_TAG_URL) return audioBufferToWav(shrunk);
+    try {
+      const tag = await loadTagBuffer(BEAT_PREVIEW_SAMPLE_RATE);
+      const tagged = mixTagRepeating(shrunk, tag, BEAT_TAG_INTERVAL, BEAT_TAG_GAIN);
+      return audioBufferToWav(tagged);
+    } catch (err) {
+      console.error('Watermark tag failed, uploading un-tagged preview:', err);
+      return audioBufferToWav(shrunk);
+    }
   }
 
   async function getAudioDuration(file) {
@@ -641,7 +743,6 @@
       // need one — the full file is already public).
       let previewPath = null;
       if (selectedType === 'beat' || (selectedType === 'track' && !isFree)) {
-        setStatus('Trimming preview clip…');
         const bufferForTrim = decodedBuffer || await (async () => {
           const ab = await audioFile.arrayBuffer();
           const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -650,7 +751,15 @@
           ctx.close();
           return b;
         })();
-        const previewBlob = trimBufferToWav(bufferForTrim, previewStartSeconds, PREVIEW_LENGTH);
+
+        let previewBlob;
+        if (selectedType === 'beat') {
+          setStatus('Adding preview watermark… this can take a few seconds');
+          previewBlob = await buildBeatPreview(bufferForTrim);
+        } else {
+          setStatus('Trimming preview clip…');
+          previewBlob = trimBufferToWav(bufferForTrim, previewStartSeconds, PREVIEW_LENGTH);
+        }
         previewPath = `${user.id}/${ts}-preview.wav`;
         const { error: previewErr } = await supabase.storage
           .from('public-previews')

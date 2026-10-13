@@ -139,8 +139,10 @@ export async function mount({ supabase, timers: __t, document }) {
       const card = cardShell(`
         <p class="title">K${payoutOf(w)} paid (75% of K${w.amount}) — ${escapeHtml(nameMap.get(w.artist_id) || 'Unknown')}</p>
         <p class="meta">Sent to ${escapeHtml(w.momo_number)} · ${escapeHtml(paidDate)}</p>
-        ${w.admin_note ? `<p class="meta">Note: ${escapeHtml(w.admin_note)}</p>` : ''}
+        <div class="wd-items"><p class="meta">Loading items…</p></div>
       `);
+      breakdownHtml(w).then(html => { card.querySelector('.wd-items').innerHTML = html; })
+        .catch(() => { card.querySelector('.wd-items').innerHTML = ''; });
       container.appendChild(card);
     }
     applySearchFilter();
@@ -365,9 +367,55 @@ export async function mount({ supabase, timers: __t, document }) {
   // Artists receive 75% of a withdrawal; the request stores the full balance, so admins pay 75% of it.
   const ARTIST_SHARE = 0.75;
   const payoutOf = (w) => Math.round(Number(w.amount) * ARTIST_SHARE);
-  // Optional admin note per withdrawal. Needs the nullable `admin_note` column on `withdrawals`
-  // (supabase/withdrawal-notes.sql); until it exists the note field is simply not shown.
-  const hasNoteColumn = (w) => 'admin_note' in w;
+  // Itemised breakdown of a withdrawal: which sales make up the amount. Built from existing data
+  // (no new tables): an artist's fulfilled purchases, oldest first, minus what earlier PAID withdrawals
+  // already covered, up to this withdrawal's amount. Cached per artist for the current render.
+  const salesCache = new Map();
+  function artistSales(artistId) {
+    if (!salesCache.has(artistId)) salesCache.set(artistId, (async () => {
+      const [{ data: tracks }, { data: beats }, { data: paid }] = await Promise.all([
+        supabase.from('tracks').select('id, title').eq('owner_id', artistId),
+        supabase.from('beats').select('id, title').eq('owner_id', artistId),
+        supabase.from('withdrawals').select('id, amount, paid_at').eq('artist_id', artistId).eq('status', 'paid'),
+      ]);
+      const titles = new Map([...(tracks || []).map(t => ['track:' + t.id, t.title]), ...(beats || []).map(b => ['beat:' + b.id, b.title])]);
+      const q = (type, ids) => ids.length
+        ? supabase.from('purchases').select('*').eq('item_type', type).eq('status', 'fulfilled').in('item_id', ids)
+        : { data: [] };
+      const [{ data: tp }, { data: bp }] = await Promise.all([q('track', (tracks || []).map(t => t.id)), q('beat', (beats || []).map(b => b.id))]);
+      const sales = [...(tp || []), ...(bp || [])]
+        .sort((x, y) => new Date(x.fulfilled_at || x.created_at || 0) - new Date(y.fulfilled_at || y.created_at || 0));
+      return { sales, titles, paid: paid || [] };
+    })());
+    return salesCache.get(artistId);
+  }
+  async function breakdownHtml(w) {
+    const { sales, titles, paid } = await artistSales(w.artist_id);
+    const cutoff = w.paid_at ? new Date(w.paid_at).getTime() : Infinity;
+    let skip = paid.filter(x => x.id !== w.id && x.paid_at && new Date(x.paid_at).getTime() < cutoff)
+      .reduce((n, x) => n + Number(x.amount), 0);
+    const target = Number(w.amount);
+    let total = 0;
+    const rows = [];
+    for (const sale of sales) {
+      if (total >= target) break;
+      let part = Number(sale.amount) || 0;
+      if (part <= 0 || skip >= part) { skip -= Math.max(part, 0); continue; }
+      part -= skip; skip = 0;
+      if (total + part > target) part = target - total;
+      total += part;
+      const title = titles.get(sale.item_type + ':' + sale.item_id) || 'Unknown item';
+      const tier = sale.license_tier ? ` · ${escapeHtml(tierLabel(sale.license_tier))}` : '';
+      const date = sale.fulfilled_at ? ` · ${escapeHtml(new Date(sale.fulfilled_at).toLocaleDateString())}` : '';
+      const ref = sale.license_id ? ` · ${escapeHtml(sale.license_id)}` : '';
+      const partial = part !== (Number(sale.amount) || 0) ? ' (part)' : '';
+      rows.push(`<li style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;"><span style="min-width:0;">${escapeHtml(title)}<span style="color:var(--ink-muted);"> (${escapeHtml(sale.item_type)}${tier}${date}${ref})</span></span><span style="flex:none;font-weight:600;">K${part}${partial}</span></li>`);
+    }
+    const mismatch = total !== target
+      ? `<p class="meta" style="color:#b3261e;">Items found total K${total} but this request is K${target} — check manually.</p>` : '';
+    return `<ul style="list-style:none;margin:6px 0;padding:0;font-size:13px;">${rows.join('') || '<li>No matching sales found.</li>'}</ul>
+      <p class="meta" style="font-weight:600;">Total K${target} → artist gets K${payoutOf(w)} (75%)</p>${mismatch}`;
+  }
 
   // --- Tab 3: Withdrawals ---
   async function loadWithdrawals() {
@@ -387,29 +435,17 @@ export async function mount({ supabase, timers: __t, document }) {
         <p class="title">K${w.amount} requested</p>
         <p class="meta" style="font-weight:700;color:var(--accent);font-size:15px;">Pay K${payoutOf(w)} (75%)</p>
         <p class="meta">Send to: ${escapeHtml(w.momo_number)}</p>
-        ${hasNoteColumn(w) ? `<div style="display:flex;gap:8px;margin:8px 0;">
-          <input type="text" class="wd-note" maxlength="200" placeholder="What is this withdrawal for? (admin note)" value="${escapeHtml(w.admin_note || '')}" style="flex:1;min-width:0;" />
-          <button type="button" class="wd-note-save" style="flex:none;">Save note</button>
-        </div>` : ''}
+        <div class="wd-items"><p class="meta">Loading items…</p></div>
         <div class="row-actions">
           <button class="approve paid">Mark Paid</button>
         </div>
       `);
-      const noteInput = card.querySelector('.wd-note');
-      const noteBtn = card.querySelector('.wd-note-save');
-      if (noteBtn) noteBtn.addEventListener('click', async () => {
-        noteBtn.disabled = true;
-        const { error } = await supabase.from('withdrawals').update({ admin_note: noteInput.value.trim() || null }).eq('id', w.id);
-        noteBtn.disabled = false;
-        noteBtn.textContent = error ? 'Failed' : 'Saved ✓';
-        setTimeout(() => { noteBtn.textContent = 'Save note'; }, 1500);
-      });
+      breakdownHtml(w).then(html => { card.querySelector('.wd-items').innerHTML = html; })
+        .catch(() => { card.querySelector('.wd-items').innerHTML = '<p class="meta">Couldn\'t load items.</p>'; });
       card.querySelector('.paid').addEventListener('click', async (e) => {
         e.target.disabled = true;
-        const upd = { status: 'paid', paid_at: new Date().toISOString() };
-        if (noteInput) upd.admin_note = noteInput.value.trim() || null;
         const { error } = await supabase.from('withdrawals')
-          .update(upd)
+          .update({ status: 'paid', paid_at: new Date().toISOString() })
           .eq('id', w.id);
         if (error) { alert(error.message); e.target.disabled = false; return; }
         card.remove();

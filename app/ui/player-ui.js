@@ -160,7 +160,7 @@ export function mountPlayerUI(host) {
     if (!P.state.get().current) return;
     lastFocus = document.activeElement;
     sheet.hidden = false; document.body.classList.add('zs-lock');
-    closeBtn.focus();
+    closeBtn.focus({ preventScroll: true }); sheet.scrollTop = 0;
   }
   function closeSheet() {
     sheet.hidden = true; document.body.classList.remove('zs-lock');

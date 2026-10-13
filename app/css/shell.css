@@ -100,7 +100,8 @@ body.zs-has-player .zs-toasts { bottom: calc(var(--zs-nav-h) + var(--zs-safe-b) 
 .zs-cover--lg { width: min(70vw, 300px); height: min(70vw, 300px); border-radius: 16px; box-shadow: 0 12px 30px rgba(20,24,28,.18); }
 
 /* ---- now playing sheet ---- */
-.zs-sheet { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 60; background: var(--zs-bg); overflow-y: auto; overscroll-behavior: contain; }
+.zs-sheet { position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; z-index: 60; background: var(--zs-bg); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; margin: 0; transform: none; }
+@supports (height: 100dvh) { .zs-sheet { height: 100dvh; } }
 .zs-sheet-inner { max-width: 520px; margin: 0 auto; padding: 8px 20px calc(24px + var(--zs-safe-b)); display: flex; flex-direction: column; align-items: center; }
 .zs-sheet-head { width: 100%; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .zs-sheet-kicker { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--zs-ink-muted); }

@@ -1,14 +1,14 @@
 // Browse / discovery. Same data and behaviour as the original browse.html (feed pagination,
 // genre chips, title search, artist filter, featured artists, trending, top downloads, realtime),
 // rebuilt on shared components + caching, with play buttons wired to the persistent player.
-import { h, debounce } from '../lib/dom.js';
+import { h, debounce, safeUrl } from '../lib/dom.js';
 import * as api from '../lib/api.js';
 import { loadFavorites } from '../lib/favorites.js';
 import { loadPromo } from '../lib/promo.js';
 import * as P from '../player/player.js';
 import { MEDAL_DEFS } from '../ui/medals.js';
 import { icon } from '../ui/icons.js';
-import { itemCard, rankCard, artistChip, skeletonGrid, skeletonRail, wireGlobalSync, detailHref, coverEl } from '../ui/cards.js';
+import { itemCard, rankCard, artistChip, skeletonGrid, skeletonRail, wireGlobalSync, detailHref, coverEl, playButton, isPlayable } from '../ui/cards.js';
 import { showToast } from '../ui/toast.js';
 import { replaceQuery } from '../lib/router.js';
 
@@ -36,19 +36,24 @@ export const markup = `${MEDAL_DEFS}
   </div>
 
   <div id="rails">
+    <section id="featured-banner" class="fbanner rail-hidden" aria-label="Featured music">
+      <div class="fbanner-track" id="fbanner-track"></div>
+      <div class="fbanner-dots" id="fbanner-dots" role="tablist" aria-label="Featured tracks"></div>
+    </section>
+
     <p class="section-title" style="margin:4px 0 10px;">🌟 Featured Artists</p>
     <div class="artist-strip" id="artist-strip" role="list"></div>
+
+    <div class="rank-section-head rank-section-head--first">
+      <p class="section-title">📈 Trending Now</p>
+      <button type="button" class="see-all" id="trending-more" hidden>See all →</button>
+    </div>
+    <div class="trend-list" id="trending-list"></div>
 
     <div id="recent-section" class="rail-hidden">
       <div class="rank-section-head"><p class="section-title">🕘 Recently played</p></div>
       <div class="rank-scroll" id="recent-list"></div>
     </div>
-
-    <div class="rank-section-head rank-section-head--first">
-      <p class="section-title">📈 Trending this week</p>
-      <button type="button" class="see-all" data-target="trending-list">See all →</button>
-    </div>
-    <div class="rank-scroll" id="trending-list"></div>
 
     <div class="rank-section-head">
       <p class="section-title">🔥 Top Downloads</p>
@@ -64,6 +69,78 @@ export const markup = `${MEDAL_DEFS}
 </div>`;
 
 const RAIL_SKEL = 4;
+
+const itemArtist = (item) => item.artistName || api.artistName(item.owner_id) || '';
+
+// One compact Trending Now row: rank, square cover, title/artist, play/pause (shared player button).
+function trendRow(item, rank, label, getList) {
+  const href = detailHref(item);
+  return h('article', { class: 'trend-row' },
+    h('span', { class: 'trend-rank', 'aria-label': `Rank ${rank}` }, String(rank)),
+    h('a', { class: 'trend-art', href, tabindex: -1, 'aria-hidden': 'true' }, coverEl(item.cover_url, item.item_type, 'trend-cover')),
+    h('a', { class: 'trend-info', href },
+      h('p', { class: 'trend-title' }, item.title),
+      h('p', { class: 'trend-artist' }, [itemArtist(item), label].filter(Boolean).join(' · '))),
+    isPlayable(item) ? playButton(item, getList, 'zs-playbtn--trend') : null);
+}
+
+
+// Banner backdrop drawn on an HTML canvas: the release's own cover, blurred and tinted with the ZAMI
+// blue gradient, plus soft shapes and equaliser bars. Pixels are never read back, so it also works
+// when the image host sends no CORS headers (falls back to a plain gradient if the image fails).
+function bannerCanvas(item) {
+  const W = 720, H = 260;
+  const cv = h('canvas', { class: 'fbanner-bg', width: W, height: H, 'aria-hidden': 'true' });
+  const ctx2 = cv.getContext('2d');
+  const paint = (img) => {
+    const g = ctx2.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#0d3f8f'); g.addColorStop(1, '#1e6feb');
+    ctx2.fillStyle = g; ctx2.fillRect(0, 0, W, H);
+    if (img) {
+      const r = Math.max(W / img.width, H / img.height) * 1.2, w = img.width * r, hh = img.height * r;
+      ctx2.save(); ctx2.filter = 'blur(18px)'; ctx2.globalAlpha = 0.55;
+      ctx2.drawImage(img, (W - w) / 2, (H - hh) / 2, w, hh); ctx2.restore();
+      const t = ctx2.createLinearGradient(0, 0, W, 0);
+      t.addColorStop(0, 'rgba(13,63,143,.85)'); t.addColorStop(1, 'rgba(30,111,235,.55)');
+      ctx2.fillStyle = t; ctx2.fillRect(0, 0, W, H);
+    }
+    ctx2.fillStyle = 'rgba(255,255,255,.07)';
+    ctx2.beginPath(); ctx2.arc(W * 0.86, H * 0.1, 150, 0, Math.PI * 2); ctx2.fill();
+    ctx2.beginPath(); ctx2.arc(W * 0.62, H * 1.05, 110, 0, Math.PI * 2); ctx2.fill();
+    ctx2.fillStyle = 'rgba(255,255,255,.12)';
+    const bars = 22, bw = 9, gap = 7;
+    for (let i = 0; i < bars; i++) {
+      const bh = 14 + Math.abs(Math.sin(i * 0.9 + 1)) * 46 + (i % 3) * 6;
+      ctx2.fillRect(W - 24 - (bars - i) * (bw + gap) + 130, H - 16 - bh, bw, bh);
+    }
+  };
+  paint(null);
+  const src = safeUrl(item.cover_url);
+  if (src) {
+    const load = (cors) => {
+      const img = new Image(); if (cors) img.crossOrigin = 'anonymous';
+      img.onload = () => paint(img);
+      img.onerror = () => { if (cors) load(false); };
+      img.src = src;
+    };
+    load(true);
+  }
+  return cv;
+}
+
+function bannerSlide(item, i, n, getList) {
+  const href = detailHref(item);
+  const meta = [item.genre, item.item_type === 'beat' ? 'Beat' : null].filter(Boolean).join(' · ');
+  return h('article', { class: 'fbanner-slide', 'aria-label': `${i + 1} of ${n}` },
+    bannerCanvas(item),
+    h('a', { class: 'fbanner-art', href, tabindex: -1, 'aria-hidden': 'true' }, coverEl(item.cover_url, item.item_type, 'fbanner-cover')),
+    h('div', { class: 'fbanner-info' },
+      h('span', { class: 'fbanner-badge' }, 'New release'),
+      h('a', { class: 'fbanner-title', href }, item.title),
+      h('p', { class: 'fbanner-artist' }, itemArtist(item)),
+      meta ? h('p', { class: 'fbanner-meta' }, meta) : null),
+    playButton(item, getList, 'zs-playbtn--banner'));
+}
 
 export async function mount(ctx) {
   const { root, params, state, supabase } = ctx;
@@ -179,7 +256,50 @@ export async function mount(ctx) {
       el.replaceChildren(...entries.map((e) => rankCard(e.item, e.rank, e.label, e.trend, () => items)));
     } catch (e) { console.error(e); if (ctx.isAlive()) railMsg(el, "Couldn't load this.", () => loadRank(fetcher, el, emptyText)); }
   }
-  const loadTrending = () => loadRank(api.fetchTrending, $('trending-list'), 'Nothing trending yet.');
+  // Trending Now: the same real "this week" ranking as before (downloads + fulfilled purchases),
+  // shown as a compact playable list. No numbers are invented; the label is the real count.
+  const TREND_SHORT = 5;
+  let trendEntries = [], trendExpanded = false;
+  function renderTrending() {
+    const el = $('trending-list'), more = $('trending-more');
+    if (!trendEntries.length) { railMsg(el, 'Nothing trending yet.'); more.hidden = true; return; }
+    const shown = trendExpanded ? trendEntries : trendEntries.slice(0, TREND_SHORT);
+    const items = shown.map((e) => e.item);
+    el.replaceChildren(...shown.map((e) => trendRow(e.item, e.rank, e.label, () => items)));
+    more.hidden = trendEntries.length <= TREND_SHORT;
+    more.textContent = trendExpanded ? 'Show less' : 'See all →';
+  }
+  async function loadTrending() {
+    const el = $('trending-list');
+    if (!el.children.length) el.replaceChildren(...Array.from({ length: 4 }, () => h('div', { class: 'trend-row trend-row--skel zs-skel', 'aria-hidden': 'true' })));
+    try {
+      trendEntries = await api.fetchTrending();
+      if (!ctx.isAlive()) return;
+      renderTrending();
+    } catch (e) { console.error(e); if (ctx.isAlive()) railMsg(el, "Couldn't load this.", loadTrending); }
+  }
+  $('trending-more').addEventListener('click', () => { trendExpanded = !trendExpanded; renderTrending(); });
+
+  // Featured banner: the newest playable releases from the default feed (same cached request as the
+  // feed below, so no extra fetch). Uses the shared play button, so it drives the one persistent player.
+  async function loadBanner() {
+    try {
+      const rows = await api.fetchFeedPageCached({ genre: 'all', q: '', artistId: null, offset: 0 }, 45_000);
+      if (!ctx.isAlive()) return;
+      const picks = rows.filter(isPlayable).slice(0, 3);
+      const section = $('featured-banner');
+      if (!picks.length) { section.classList.add('rail-hidden'); return; }
+      section.classList.remove('rail-hidden');
+      const trackEl = $('fbanner-track'), dots = $('fbanner-dots');
+      trackEl.replaceChildren(...picks.map((item, i) => bannerSlide(item, i, picks.length, () => picks)));
+      dots.replaceChildren(...picks.map((_, i) => h('span', { class: 'fbanner-dot' + (i === 0 ? ' active' : ''), 'aria-hidden': 'true' })));
+      dots.classList.toggle('rail-hidden', picks.length < 2);
+      trackEl.onscroll = () => {
+        const i = Math.round(trackEl.scrollLeft / Math.max(1, trackEl.clientWidth));
+        [...dots.children].forEach((d, k) => d.classList.toggle('active', k === i));
+      };
+    } catch (e) { console.error(e); }
+  }
   const loadTop = () => loadRank(api.fetchTopDownloads, $('top-downloads-list'), 'Nothing yet.');
 
   // Recently played (from the shared player history)
@@ -235,7 +355,7 @@ export async function mount(ctx) {
   // ---- go ----
   updateLayout();
   if (S.artistId) { await api.ensureNames([S.artistId]).catch(() => {}); S.artistName = api.artistName(S.artistId); if (S.artistName) setArtistFilter(S.artistId, S.artistName, { load: false }); }
-  loadFeatured(); loadTrending(); loadTop();
+  loadFeatured(); loadBanner(); loadTrending(); loadTop();
   if (restored && S.items.length) { renderGrid(); ctx.ready(); } else loadFeed(true);
   focusSearch();
 }

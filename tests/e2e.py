@@ -70,7 +70,7 @@ def run():
         p.wait_for_selector('.zs-card')
         check('browse renders shell + cards', p.locator('.zs-header').count() == 1 and p.locator('.zs-card').count() >= 8)
         check('primary nav marks Browse active', 'Browse' in (p.locator('.zs-topnav .is-active').inner_text() or ''))
-        check('featured artists + trending + top downloads render', p.locator('.artist-chip').count() >= 1 and p.locator('#trending-list .rank-card').count() >= 1 and p.locator('#top-downloads-list .rank-card').count() >= 1)
+        check('featured artists + trending + top downloads render', p.locator('.artist-chip').count() >= 1 and p.locator('#trending-list .trend-row').count() >= 1 and p.locator('#top-downloads-list .rank-card').count() >= 1)
         check('medal badge for rank 1', p.locator('#top-downloads-list .rank-card.medal-1 .rank-medal-badge').count() == 1)
         check('only ONE <audio> element in the document', audio(p)['n'] == 1)
         for path in ['detail.html?type=track&id=1', 'detail.html?type=beat&id=3', 'artist.html?id=u1', 'login.html', 'download.html']:

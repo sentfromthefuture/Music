@@ -42,7 +42,7 @@ export function playFromList(items, item) {
   P.playQueue(playable.map((i) => P.trackFromRow(i, nameOf(i))), idx);
 }
 
-function playButton(item, getList, cls) {
+export function playButton(item, getList, cls) {
   const key = `${item.item_type}-${item.id}`;
   const b = h('button', { type: 'button', class: `zs-playbtn ${cls || ''}`, dataset: { playKey: key } });
   b.innerHTML = icon('play', 22);

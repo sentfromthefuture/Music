@@ -214,7 +214,7 @@ export async function mount({ supabase, timers: __t, document }) {
     const pendingBanner = document.getElementById('pending-banner');
     if (pending) {
       activeWithdrawalId = pending.id;
-      pendingBanner.textContent = `Withdrawal of K${pending.amount} requested — awaiting payment.`;
+      pendingBanner.textContent = `Withdrawal of K${Math.round(pending.amount * 0.75)} (75%) is being processed.`;
       pendingBanner.classList.remove('hidden');
       withdrawBtn.disabled = true;
     }
@@ -254,7 +254,7 @@ export async function mount({ supabase, timers: __t, document }) {
     activeWithdrawalId = data.id;
     withdrawStatus.textContent = '';
     const pendingBanner = document.getElementById('pending-banner');
-    pendingBanner.textContent = `Withdrawal of K${data.amount} requested — awaiting payment.`;
+    pendingBanner.textContent = `Withdrawal of K${Math.round(data.amount * 0.75)} (75%) is being processed.`;
     pendingBanner.classList.remove('hidden');
   });
 
@@ -267,7 +267,7 @@ export async function mount({ supabase, timers: __t, document }) {
         if (payload.new.status === 'paid' && payload.new.id === activeWithdrawalId) {
           document.getElementById('pending-banner').classList.add('hidden');
           const paidBanner = document.getElementById('paid-banner');
-          paidBanner.textContent = `K${payload.new.amount} sent to your MoMo number.`;
+          paidBanner.textContent = `K${Math.round(payload.new.amount * 0.75)} sent to your MoMo number.`;
           paidBanner.classList.remove('hidden');
           document.getElementById('withdraw-btn').disabled = false;
           activeWithdrawalId = null;

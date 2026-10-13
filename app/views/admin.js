@@ -137,8 +137,9 @@ export async function mount({ supabase, timers: __t, document }) {
     for (const w of withdrawals) {
       const paidDate = w.paid_at ? new Date(w.paid_at).toLocaleString() : '';
       const card = cardShell(`
-        <p class="title">K${w.amount} — ${escapeHtml(nameMap.get(w.artist_id) || 'Unknown')}</p>
+        <p class="title">K${payoutOf(w)} paid (75% of K${w.amount}) — ${escapeHtml(nameMap.get(w.artist_id) || 'Unknown')}</p>
         <p class="meta">Sent to ${escapeHtml(w.momo_number)} · ${escapeHtml(paidDate)}</p>
+        ${w.admin_note ? `<p class="meta">Note: ${escapeHtml(w.admin_note)}</p>` : ''}
       `);
       container.appendChild(card);
     }
@@ -361,6 +362,13 @@ export async function mount({ supabase, timers: __t, document }) {
     applySearchFilter();
   }
 
+  // Artists receive 75% of a withdrawal; the request stores the full balance, so admins pay 75% of it.
+  const ARTIST_SHARE = 0.75;
+  const payoutOf = (w) => Math.round(Number(w.amount) * ARTIST_SHARE);
+  // Optional admin note per withdrawal. Needs the nullable `admin_note` column on `withdrawals`
+  // (supabase/withdrawal-notes.sql); until it exists the note field is simply not shown.
+  const hasNoteColumn = (w) => 'admin_note' in w;
+
   // --- Tab 3: Withdrawals ---
   async function loadWithdrawals() {
     const container = document.getElementById('tab-withdrawals');
@@ -376,16 +384,32 @@ export async function mount({ supabase, timers: __t, document }) {
 
     for (const w of withdrawals) {
       const card = cardShell(`
-        <p class="title">K${w.amount}</p>
+        <p class="title">K${w.amount} requested</p>
+        <p class="meta" style="font-weight:700;color:var(--accent);font-size:15px;">Pay K${payoutOf(w)} (75%)</p>
         <p class="meta">Send to: ${escapeHtml(w.momo_number)}</p>
+        ${hasNoteColumn(w) ? `<div style="display:flex;gap:8px;margin:8px 0;">
+          <input type="text" class="wd-note" maxlength="200" placeholder="What is this withdrawal for? (admin note)" value="${escapeHtml(w.admin_note || '')}" style="flex:1;min-width:0;" />
+          <button type="button" class="wd-note-save" style="flex:none;">Save note</button>
+        </div>` : ''}
         <div class="row-actions">
           <button class="approve paid">Mark Paid</button>
         </div>
       `);
+      const noteInput = card.querySelector('.wd-note');
+      const noteBtn = card.querySelector('.wd-note-save');
+      if (noteBtn) noteBtn.addEventListener('click', async () => {
+        noteBtn.disabled = true;
+        const { error } = await supabase.from('withdrawals').update({ admin_note: noteInput.value.trim() || null }).eq('id', w.id);
+        noteBtn.disabled = false;
+        noteBtn.textContent = error ? 'Failed' : 'Saved ✓';
+        setTimeout(() => { noteBtn.textContent = 'Save note'; }, 1500);
+      });
       card.querySelector('.paid').addEventListener('click', async (e) => {
         e.target.disabled = true;
+        const upd = { status: 'paid', paid_at: new Date().toISOString() };
+        if (noteInput) upd.admin_note = noteInput.value.trim() || null;
         const { error } = await supabase.from('withdrawals')
-          .update({ status: 'paid', paid_at: new Date().toISOString() })
+          .update(upd)
           .eq('id', w.id);
         if (error) { alert(error.message); e.target.disabled = false; return; }
         card.remove();

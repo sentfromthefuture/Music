@@ -57,6 +57,8 @@ def run():
         ins = p.evaluate("() => (window.__ins || []).filter((i) => i.t === 'purchases').map((i) => i.payload)")
         check('purchase saved with tier + license name', len(ins) == 1 and ins[0].get('license_tier') == 'premium' and ins[0].get('buyer_name') == 'Mulenga K' and ins[0].get('amount') == 120, str(ins))
         check('payment instructions use the tier price', 'K120' in p.locator('#pay-instructions').inner_text())
+        p.fill('#sms-input', 'Confirmed. You have sent K120 to ZAMI. Txn ID 1234567890'); p.locator('#sms-submit-btn').click(); time.sleep(0.8)
+        check('pasted SMS is saved through the narrow database function', p.evaluate("() => (window.__rpc || []).some((r) => r[0] === 'submit_purchase_sms' && /Txn ID/.test(r[1].p_sms))") and p.locator('#waiting-step').is_visible())
         # simulate admin approval arriving over realtime
         p.evaluate("() => { const row = (window.__ins.find((i) => i.t === 'purchases') || {}).payload; (window.__chan || []).forEach((c) => c.cb && c.cb({ new: { ...row, id: 101, status: 'fulfilled', download_url: 'https://example.com/x.wav', license_id: 'ZL-TEST0101', fulfilled_at: new Date().toISOString() } })); }")
         p.wait_for_selector('#fulfilled-step .lic-actions button', timeout=5000)

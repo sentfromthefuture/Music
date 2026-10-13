@@ -232,7 +232,15 @@ export async function mount({ supabase, timers: __t, document }) {
       smsStatus.textContent = 'Submitting…';
       smsStatus.classList.remove('error');
 
-      const { error } = await supabase.from('purchases').update({ transaction_sms: smsText }).eq('id', purchaseRow.id);
+      // Buyers have no UPDATE permission on purchases (by design), so the SMS goes through a narrow database
+      // function (supabase/hardening.sql). Until that is installed, fall back to the old direct update.
+      let error = null;
+      const viaRpc = await supabase.rpc('submit_purchase_sms', { p_purchase_id: String(purchaseRow.id), p_sms: smsText });
+      if (viaRpc.error) {
+        ({ error } = await supabase.from('purchases').update({ transaction_sms: smsText }).eq('id', purchaseRow.id));
+      } else if (viaRpc.data === false) {
+        error = { message: 'We could not save your message. Please refresh and try again.' };
+      }
       submitting = false;
       if (error) {
         smsStatus.textContent = error.message;

@@ -79,11 +79,19 @@ drop trigger if exists zami_beat_exclusive_guard on public.beats;
 create trigger zami_beat_exclusive_guard before update on public.beats
   for each row execute function public.zami_beat_exclusive_guard();
 
--- 3b) Buyers can still read a beat they paid for, even after it is delisted (exclusive sale or takedown)
+-- 3b) Buyers can still read a beat they paid for, even after it is delisted (exclusive sale or takedown).
+-- Uses a SECURITY DEFINER helper so the policy never re-enters purchases' own policies
+-- (a direct sub-select caused "infinite recursion detected in policy for relation beats").
 drop policy if exists "beats buyer read" on public.beats;
-create policy "beats buyer read" on public.beats for select
-  using (exists (select 1 from public.purchases p
-    where p.item_type = 'beat' and p.item_id::text = beats.id::text and p.buyer_id = auth.uid() and p.status = 'fulfilled'));
+create or replace function public.zami_bought_beat(p_beat_id text, p_premium_only boolean default false)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.purchases p
+    where p.item_type = 'beat' and p.item_id::text = p_beat_id and p.buyer_id = auth.uid()
+      and p.status = 'fulfilled'
+      and (not p_premium_only or p.license_tier in ('premium','exclusive')))
+$$;
+grant execute on function public.zami_bought_beat(text, boolean) to anon, authenticated;
+create policy "beats buyer read" on public.beats for select using (public.zami_bought_beat(id::text));
 
 -- 4) Stems / WAV link: private to the producer and to buyers of Premium or Exclusive ------------
 create table if not exists public.beat_extras (
@@ -100,9 +108,7 @@ create policy "extras owner" on public.beat_extras for all
   with check (owner_id = auth.uid() and exists (select 1 from public.beats b where b.id::text = beat_id and b.owner_id = auth.uid()));
 drop policy if exists "extras buyer read" on public.beat_extras;
 create policy "extras buyer read" on public.beat_extras for select
-  using (exists (select 1 from public.purchases p
-    where p.item_type = 'beat' and p.item_id::text = beat_extras.beat_id and p.buyer_id = auth.uid()
-      and p.status = 'fulfilled' and p.license_tier in ('premium','exclusive')));
+  using (public.zami_bought_beat(beat_id, true));
 
 -- 5) "Request stems / WAV" (producer delivers off-platform) ---------------------------------------
 create table if not exists public.stem_requests (

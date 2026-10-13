@@ -39,9 +39,9 @@ create policy "complaints buyer insert" on public.purchase_complaints for insert
   with check (buyer_id = auth.uid()
     and status = 'open'
     and public.zami_complaints_today() < 10
-    and exists (select 1 from public.purchases p where p.id::text = purchase_id and p.buyer_id = auth.uid()
-      and p.status = 'fulfilled' and p.item_id::text = item_id and p.item_type = 'beat')
-    and exists (select 1 from public.beats b where b.id::text = item_id and b.owner_id = producer_id));
+    and exists (select 1 from public.purchases p where p.id::text = purchase_complaints.purchase_id and p.buyer_id = auth.uid()
+      and p.status = 'fulfilled' and p.item_id::text = purchase_complaints.item_id and p.item_type = 'beat')
+    and exists (select 1 from public.beats b where b.id::text = purchase_complaints.item_id and b.owner_id = purchase_complaints.producer_id));
 
 drop policy if exists "complaints buyer read" on public.purchase_complaints;
 create policy "complaints buyer read" on public.purchase_complaints for select using (buyer_id = auth.uid());

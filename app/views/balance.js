@@ -13,10 +13,10 @@ export const markup = `<div class="wrap">
     <div class="card">
       <p class="balance-label">Available balance</p>
       <p class="balance-value" id="balance-value">K0</p>
-      <p class="split-note">Artists keep 80% of all revenue — the platform keeps 20% to cover running costs.</p>
+      <p class="split-note">Artists receive 70% of all revenue — the rest covers running costs. For any queries, reach out to management at <a href="mailto:zamimusicltd@gmail.com">zamimusicltd@gmail.com</a>.</p>
 
       <div class="payout-row">
-        <p class="balance-label">You'll receive (80%)</p>
+        <p class="balance-label">You'll receive (70%)</p>
         <p class="balance-value" id="balance-value-payout">K0</p>
       </div>
 
@@ -25,6 +25,7 @@ export const markup = `<div class="wrap">
 
       <button type="button" class="primary" id="withdraw-btn">Request withdrawal</button>
       <p class="status-line" id="withdraw-status"></p>
+      <p class="split-note" style="margin:10px 0 0;">Withdrawals are processed from Friday 09:00 to Monday 17:00. Thanks for doing business with ZAMI.</p>
     </div>
 
     <div class="card">
@@ -160,7 +161,7 @@ export async function mount({ supabase, timers: __t, document }) {
     artistItemIds.track = new Set(result.tracks.map(t => t.id));
     artistItemIds.beat = new Set(result.beats.map(b => b.id));
     document.getElementById('balance-value').textContent = `K${result.balance}`;
-    document.getElementById('balance-value-payout').textContent = `K${Math.round(result.balance * 0.8)}`;
+    document.getElementById('balance-value-payout').textContent = `K${Math.round(result.balance * 0.7)}`;
     document.getElementById('stat-sold').textContent = result.soldCount;
 
     const [{ count: liveTracks }, { count: liveBeats }] = await Promise.all([

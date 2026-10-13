@@ -1,0 +1,116 @@
+/* generated from legacy/original/my-uploads.html by tools/convert-page.mjs */
+#zs-view {
+  --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #1e6feb;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --warn-bg: #fbeed9;
+    --warn-ink: #8a5a12;
+    --removed-bg: #f3e0df;
+    --removed-ink: #8a2e26;
+    --radius: 10px;
+}
+#zs-view * {
+  box-sizing: border-box;
+}
+#zs-view {
+  margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+#zs-view .wrap {
+  max-width: 420px; margin: 0 auto; padding: 20px 16px 60px;
+}
+#zs-view .header-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+#zs-view h1 {
+  font-size: 18px; font-weight: 600; margin: 0 0 4px;
+}
+#zs-view .sub {
+  font-size: 13px; color: var(--ink-muted); margin: 0 0 16px;
+}
+#zs-view #notif-btn {
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink-muted); font-size: 11px; padding: 6px 10px; cursor: pointer; white-space: nowrap;
+}
+#zs-view .card {
+  background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 12px;
+}
+#zs-view .row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+#zs-view .thumb {
+  width: 40px; height: 40px; border-radius: 8px; background: var(--surface-alt);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink-muted);
+}
+#zs-view .title {
+  margin: 0; font-size: 14px; font-weight: 600;
+}
+#zs-view .meta {
+  margin: 0; font-size: 12px; color: var(--ink-muted);
+}
+#zs-view .badge {
+  display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+}
+#zs-view .badge.pending_payment {
+  background: var(--warn-bg); color: var(--warn-ink);
+}
+#zs-view .badge.pending_review {
+  background: var(--warn-bg); color: var(--warn-ink);
+}
+#zs-view .badge.approved {
+  background: #e1f0e6; color: var(--success);
+}
+#zs-view .badge.removed {
+  background: var(--removed-bg); color: var(--removed-ink);
+}
+#zs-view .pay-section {
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+#zs-view .ref-badge {
+  display: flex; justify-content: space-between; align-items: center;
+    background: var(--warn-bg); color: var(--warn-ink);
+    border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 12px;
+}
+#zs-view .ref-badge strong {
+  font-weight: 600;
+}
+#zs-view .pay-instructions {
+  font-size: 12px; color: var(--ink-muted); margin: 0 0 10px;
+}
+#zs-view textarea {
+  width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 8px;
+}
+#zs-view button.primary {
+  width: 100%; padding: 10px; border: none; border-radius: 8px;
+    background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+#zs-view button.primary:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+#zs-view .status-line {
+  font-size: 12px; color: var(--ink-muted); margin-top: 6px; min-height: 14px;
+}
+#zs-view .status-line.error {
+  color: #b3261e;
+}
+#zs-view .empty-state,
+#zs-view .gate-msg {
+  text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0;
+}
+#zs-view .hidden {
+  display: none !important;
+}

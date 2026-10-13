@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Get the Zami App</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #1e6feb;
+    --lime: #65a30d;
+    --accent-ink: #ffffff;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 32px 20px 60px; }
+
+  .logo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--lime));
+    display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800;
+  }
+  .logo-word { font-weight: 800; font-size: 16px; letter-spacing: -0.2px; }
+  .logo-tag { font-size: 10px; color: var(--ink-muted); margin: -2px 0 0; }
+
+  h1 { font-size: 26px; line-height: 1.25; margin: 0 0 8px; font-weight: 800; }
+  .lede { font-size: 14px; color: var(--ink-muted); margin: 0 0 28px; line-height: 1.5; }
+
+  .download-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 20px;
+  }
+  .download-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-muted); margin-bottom: 14px; }
+  #download-btn {
+    display: block; width: 100%; text-align: center; padding: 15px; border-radius: 10px;
+    background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 15px;
+    text-decoration: none; border: none; cursor: pointer;
+  }
+  #download-btn:active { opacity: 0.9; }
+  .file-note { font-size: 11px; color: var(--ink-muted); text-align: center; margin: 10px 0 0; }
+
+  .features { list-style: none; margin: 0 0 28px; padding: 0; display: grid; gap: 10px; }
+  .features li { display: flex; gap: 10px; font-size: 13px; align-items: flex-start; }
+  .features li::before { content: "●"; color: var(--lime); font-size: 8px; margin-top: 5px; flex-shrink: 0; }
+
+  .steps { background: var(--surface-alt); border-radius: var(--radius); padding: 18px 20px; }
+  .steps h2 { font-size: 13px; text-transform: none; margin: 0 0 12px; font-weight: 700; }
+  .steps ol { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink); line-height: 1.9; }
+  .steps ol li span { color: var(--ink-muted); }
+
+  footer { text-align: center; font-size: 11px; color: var(--ink-muted); margin-top: 32px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="logo-row">
+    <div class="logo-mark">Z</div>
+    <div>
+      <p class="logo-word">ZAMI</p>
+      <p class="logo-tag">WHERE ZAMBIA SOUNDS</p>
+    </div>
+  </div>
+
+  <h1>Take Zami with you.</h1>
+  <p class="lede">Download the Android app to browse, preview and download local tracks and beats — no browser tabs, quicker downloads, right from your home screen.</p>
+
+  <div class="download-card">
+    <div class="download-meta">
+      <span>Android</span>
+      <span id="version-label">Version —</span>
+    </div>
+    <a id="download-btn" href="#" download>Download for Android</a>
+    <p class="file-note">.apk file · installs outside the Play Store</p>
+  </div>
+
+  <ul class="features">
+    <li>Browse tracks and beats from Zambian artists</li>
+    <li>Preview beats before producers list them for sale</li>
+    <li>Faster downloads with progress you can track</li>
+    <li>Works well on slower connections</li>
+  </ul>
+
+  <div class="steps">
+    <h2>After it downloads</h2>
+    <ol>
+      <li>Open the downloaded file from your notifications or Downloads folder</li>
+      <li>If prompted, allow <span>"Install unknown apps"</span> for your browser — this is normal for apps installed outside the Play Store</li>
+      <li>Tap Install, then open Zami</li>
+    </ol>
+  </div>
+
+  <footer>Zami is not on the Google Play Store yet. This file is safe — it's the same app, built and shared directly by Zami.</footer>
+</div>
+
+<script src="zami-download-config.js"></script>
+<script>
+  var url = window.ZAMI_APK_URL || "#";
+  document.getElementById("download-btn").setAttribute("href", url);
+  if (window.ZAMI_APK_VERSION) {
+    document.getElementById("version-label").textContent = "Version " + window.ZAMI_APK_VERSION;
+  }
+</script>
+</body>
+</html>

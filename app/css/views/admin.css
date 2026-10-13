@@ -1,0 +1,129 @@
+/* generated from legacy/original/admin.html by tools/convert-page.mjs */
+#zs-view {
+  --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #b8792c;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --danger: #b3261e;
+    --warn-bg: #fbeed9;
+    --warn-ink: #8a5a12;
+    --radius: 10px;
+}
+#zs-view * {
+  box-sizing: border-box;
+}
+#zs-view {
+  margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+#zs-view .wrap {
+  max-width: 480px; margin: 0 auto; padding: 20px 16px 60px;
+}
+#zs-view .header-row {
+  display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;
+}
+#zs-view h1 {
+  font-size: 18px; font-weight: 600; margin: 0 0 4px;
+}
+#zs-view .sub {
+  font-size: 13px; color: var(--ink-muted); margin: 0 0 16px;
+}
+#zs-view #logout-btn {
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink-muted); font-size: 12px; padding: 6px 10px; cursor: pointer;
+}
+#zs-view .stats-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
+}
+#zs-view .stat-tile {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center;
+}
+#zs-view .stat-value {
+  font-size: 16px; font-weight: 700; margin: 0;
+}
+#zs-view .stat-label {
+  font-size: 9px; color: var(--ink-muted); margin: 2px 0 0; line-height: 1.2;
+}
+#zs-view .tabs {
+  display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto;
+}
+#zs-view .tabs button {
+  flex-shrink: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-alt); color: var(--ink-muted); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap;
+}
+#zs-view .tabs button.active {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+}
+#zs-view .card {
+  background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 12px;
+}
+#zs-view .card .title {
+  font-size: 14px; font-weight: 600; margin: 0 0 2px;
+}
+#zs-view .card .meta {
+  font-size: 12px; color: var(--ink-muted); margin: 0 0 10px;
+}
+#zs-view .ref-badge {
+  display: inline-block; background: var(--warn-bg); color: var(--warn-ink);
+    border-radius: 6px; padding: 3px 8px; font-size: 12px; font-weight: 600; margin-bottom: 8px;
+}
+#zs-view .sms-box {
+  background: var(--surface-alt); border-radius: 8px; padding: 8px 10px;
+    font-size: 12px; color: var(--ink); margin-bottom: 10px; white-space: pre-wrap; word-break: break-word;
+}
+#zs-view .row-actions {
+  display: flex; gap: 8px;
+}
+#zs-view button.approve,
+#zs-view button.reject,
+#zs-view button.paid {
+  flex: 1; padding: 9px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+#zs-view button.approve,
+#zs-view button.paid {
+  background: var(--success); color: #fff;
+}
+#zs-view button.reject {
+  background: var(--danger); color: #fff;
+}
+#zs-view button:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+#zs-view .signed-url-box {
+  margin-top: 10px; background: var(--surface-alt); border-radius: 8px; padding: 8px 10px;
+    font-size: 11px; word-break: break-all; display: flex; align-items: center; gap: 8px;
+}
+#zs-view .signed-url-box button {
+  flex-shrink: 0; padding: 6px 10px; font-size: 11px; border: none; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer;
+}
+#zs-view .admin-tag {
+  font-size: 11px; color: var(--accent); font-weight: 600;
+}
+#zs-view .dup-badge {
+  background: #fdecea; color: var(--danger); border-radius: 6px;
+    padding: 6px 8px; font-size: 12px; font-weight: 600; margin-bottom: 8px;
+}
+#zs-view .fp-note {
+  font-size: 11px; color: var(--ink-muted); margin: 0 0 8px;
+}
+#zs-view .empty-state {
+  text-align: center; color: var(--ink-muted); font-size: 13px; padding: 30px 0;
+}
+#zs-view .gate-msg {
+  text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0;
+}
+#zs-view .hidden {
+  display: none !important;
+}

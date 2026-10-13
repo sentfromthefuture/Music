@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log in — Music Platform</title>
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #1e6feb;
+    --accent-ink: #ffffff;
+    --success: #65a30d;
+    --teal: #60a5fa;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* --- Animated background --- */
+  .bg-blobs { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.28; }
+  .blob-1 { width: 320px; height: 320px; background: var(--accent); top: -100px; left: -80px; animation: float1 16s ease-in-out infinite; }
+  .blob-2 { width: 280px; height: 280px; background: var(--success); bottom: -90px; right: -60px; animation: float2 20s ease-in-out infinite; }
+  .blob-3 { width: 220px; height: 220px; background: var(--teal); top: 42%; right: -80px; animation: float3 18s ease-in-out infinite; }
+  @keyframes float1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(36px, 46px) scale(1.12); } }
+  @keyframes float2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-34px, -26px) scale(1.16); } }
+  @keyframes float3 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-24px, 34px) scale(0.9); } }
+  @media (prefers-reduced-motion: reduce) {
+    .blob { animation: none !important; }
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 420px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* --- Little equalizer flourish above the heading --- */
+  .eq { display: flex; align-items: flex-end; gap: 4px; height: 26px; margin-bottom: 12px; }
+  .eq span { width: 4px; background: var(--accent); border-radius: 2px; transform-origin: bottom; animation: eq 1.1s ease-in-out infinite; }
+  .eq span:nth-child(1) { height: 40%; animation-delay: 0s; }
+  .eq span:nth-child(2) { height: 75%; animation-delay: 0.15s; }
+  .eq span:nth-child(3) { height: 100%; animation-delay: 0.3s; }
+  .eq span:nth-child(4) { height: 60%; animation-delay: 0.45s; }
+  .eq span:nth-child(5) { height: 85%; animation-delay: 0.6s; }
+  @keyframes eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    .eq span { animation: none; transform: scaleY(0.7); }
+  }
+
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: var(--ink-muted); margin: 0 0 20px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(20, 24, 28, 0.03);
+    animation: rise 0.5s ease both;
+  }
+  #type-card { animation-delay: 0.04s; padding: 6px; display: flex; gap: 6px; }
+  #phone-card { animation-delay: 0.12s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none !important; }
+  }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin: 14px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], input[type="tel"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  input[type="text"]:focus, input[type="tel"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(30, 111, 235, 0.15);
+  }
+
+  .type-toggle-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--surface-alt);
+    color: var(--ink-muted);
+    transition: background 0.25s ease, color 0.25s ease, transform 0.12s ease;
+  }
+  .type-toggle-btn.active { background: var(--accent); color: var(--accent-ink); }
+  .type-toggle-btn:active { transform: scale(0.97); }
+
+  button.primary {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.12s ease, opacity 0.2s ease;
+  }
+  button.primary:active:not(:disabled) { transform: scale(0.98); }
+  button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  button.link {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--ink-muted);
+    font-size: 13px;
+    padding: 10px 0 0;
+    cursor: pointer;
+  }
+
+  .status-line { font-size: 12px; color: var(--ink-muted); margin-top: 8px; min-height: 16px; }
+  .status-line.error { color: #b3261e; }
+
+  .success-card { text-align: center; }
+  .success-card p { font-size: 14px; color: var(--success); font-weight: 500; margin: 0 0 14px; }
+
+  .check-circle {
+    width: 56px; height: 56px; border-radius: 50%; background: var(--success);
+    display: flex; align-items: center; justify-content: center; margin: 4px auto 14px;
+    animation: pop 0.4s ease;
+  }
+  .check-circle svg { width: 26px; height: 26px; stroke: #fff; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .check-circle { animation: none; }
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="bg-blobs" aria-hidden="true">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<div class="wrap">
+  <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  <h1>Log in</h1>
+  <p class="sub">Enter your phone number to get a one-time code.</p>
+
+  <div class="card" id="type-card">
+    <button type="button" class="type-toggle-btn active" data-role="listener">I'm a Listener</button>
+    <button type="button" class="type-toggle-btn" data-role="artist">I'm an Artist</button>
+  </div>
+
+  <!-- Step 1: phone number -->
+  <div id="phone-card" class="card">
+    <label for="phone-input">Phone number</label>
+    <input type="tel" id="phone-input" placeholder="0971234567" />
+    <button type="button" class="primary" id="send-code-btn"><span>Send code</span></button>
+    <p class="status-line" id="phone-status"></p>
+  </div>
+
+  <!-- Step 2: OTP code -->
+  <div id="otp-card" class="card hidden">
+    <label for="otp-input">Enter the 6-digit code</label>
+    <input type="text" id="otp-input" inputmode="numeric" maxlength="6" placeholder="123456" />
+    <button type="button" class="primary" id="verify-btn"><span>Verify</span></button>
+    <button type="button" class="link" id="change-number-btn">Use a different number</button>
+    <p class="status-line" id="otp-status"></p>
+  </div>
+
+  <!-- Success -->
+  <div id="success-card" class="card success-card hidden">
+    <div class="check-circle"><svg viewBox="0 0 24 24"><polyline points="4 12 9 17 20 6"/></svg></div>
+    <p>You're logged in.</p>
+    <button type="button" class="primary" id="go-to-upload-btn"><span>Continue</span></button>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPABASE_URL = 'https://tradvpjpxshngjemnoaq.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyYWR2cGpweHNobmdqZW1ub2FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NDQ5NTksImV4cCI6MjEwNDUyMDk1OX0.6guQxGOLId1MqlFa79i4lS2-l63FDthS7svRmWySQ94';
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const phoneCard = document.getElementById('phone-card');
+  const otpCard = document.getElementById('otp-card');
+  const successCard = document.getElementById('success-card');
+
+  const phoneInput = document.getElementById('phone-input');
+  const otpInput = document.getElementById('otp-input');
+  const phoneStatus = document.getElementById('phone-status');
+  const otpStatus = document.getElementById('otp-status');
+
+  const sendCodeBtn = document.getElementById('send-code-btn');
+  const verifyBtn = document.getElementById('verify-btn');
+
+  let currentPhone = '';
+  let selectedRole = 'listener';
+
+  document.querySelectorAll('.type-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.type-toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedRole = btn.dataset.role;
+    });
+  });
+
+  // Toggles a primary button between its normal label and a spinner + label,
+  // and disables it while a request is in flight (prevents double-submits,
+  // e.g. someone tapping "Send code" twice before the first request returns).
+  function setButtonLoading(btn, loading, loadingLabel) {
+    const label = btn.querySelector('span');
+    if (loading) {
+      btn.dataset.originalLabel = label.textContent;
+      label.textContent = loadingLabel;
+      btn.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>');
+      btn.disabled = true;
+    } else {
+      const spinner = btn.querySelector('.spinner');
+      if (spinner) spinner.remove();
+      if (btn.dataset.originalLabel) label.textContent = btn.dataset.originalLabel;
+      btn.disabled = false;
+    }
+  }
+
+  // Normalizes 0XXXXXXXXX, XXXXXXXXX, 260XXXXXXXXX, +260XXXXXXXXX -> +260XXXXXXXXX
+  function normalizeZambianPhone(raw) {
+    const cleaned = raw.trim().replace(/[\s\-()]/g, '');
+    let normalized = null;
+    if (cleaned.startsWith('+260')) {
+      normalized = cleaned;
+    } else if (cleaned.startsWith('260')) {
+      normalized = '+' + cleaned;
+    } else if (cleaned.startsWith('0')) {
+      normalized = '+260' + cleaned.slice(1);
+    } else if (/^\d{9}$/.test(cleaned)) {
+      normalized = '+260' + cleaned;
+    }
+    // A valid normalized Zambian number is +260 followed by exactly 9 digits
+    if (normalized && /^\+260\d{9}$/.test(normalized)) return normalized;
+    return null;
+  }
+
+  // If already logged in, skip straight to success — fetching the actual
+  // stored role first (previously this called showSuccess() with no role,
+  // which always fell back to "Go to Browse" even for artists).
+  (async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: existingProfile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      showSuccess(existingProfile?.role);
+    }
+  })();
+
+  sendCodeBtn.addEventListener('click', async () => {
+    const rawPhone = phoneInput.value.trim();
+    const phone = normalizeZambianPhone(rawPhone);
+    if (!phone) {
+      phoneStatus.textContent = 'Enter a valid Zambian number, e.g. 0971234567 or +260971234567';
+      phoneStatus.classList.add('error');
+      return;
+    }
+    phoneStatus.textContent = '';
+    phoneStatus.classList.remove('error');
+    setButtonLoading(sendCodeBtn, true, 'Sending…');
+
+    const { error } = await supabase.auth.signInWithOtp({ phone });
+    setButtonLoading(sendCodeBtn, false);
+
+    if (error) {
+      phoneStatus.textContent = error.message;
+      phoneStatus.classList.add('error');
+      return;
+    }
+
+    currentPhone = phone;
+    phoneCard.classList.add('hidden');
+    otpCard.classList.remove('hidden');
+    otpInput.focus();
+  });
+
+  verifyBtn.addEventListener('click', async () => {
+    const token = otpInput.value.trim();
+    if (token.length !== 6) {
+      otpStatus.textContent = 'Enter the 6-digit code from the SMS.';
+      otpStatus.classList.add('error');
+      return;
+    }
+    otpStatus.textContent = '';
+    otpStatus.classList.remove('error');
+    setButtonLoading(verifyBtn, true, 'Verifying…');
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: currentPhone,
+      token,
+      type: 'sms',
+    });
+
+    setButtonLoading(verifyBtn, false);
+
+    if (error) {
+      otpStatus.textContent = error.message;
+      otpStatus.classList.add('error');
+      return;
+    }
+
+    // First login for this user — make sure they have a profile row,
+    // using whichever account type they selected above. Returning users
+    // keep their existing stored role regardless of what's selected here
+    // (the toggle only decides brand-new signups).
+    const user = data.user;
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    let finalRole = 'listener';
+    if (!existingProfile) {
+      await supabase.from('profiles').insert({ id: user.id, role: selectedRole });
+      finalRole = selectedRole;
+    } else {
+      finalRole = existingProfile.role;
+    }
+
+    showSuccess(finalRole);
+  });
+
+  document.getElementById('change-number-btn').addEventListener('click', () => {
+    otpCard.classList.add('hidden');
+    phoneCard.classList.remove('hidden');
+    otpInput.value = '';
+    otpStatus.textContent = '';
+  });
+
+  document.getElementById('go-to-upload-btn').addEventListener('click', () => {
+    window.location.href = document.getElementById('go-to-upload-btn').dataset.href || 'browse.html';
+  });
+
+  function showSuccess(role) {
+    phoneCard.classList.add('hidden');
+    otpCard.classList.add('hidden');
+    successCard.classList.remove('hidden');
+    const goBtn = document.getElementById('go-to-upload-btn');
+    const label = goBtn.querySelector('span');
+    if (role === 'artist') {
+      label.textContent = 'Go to Upload';
+      goBtn.dataset.href = 'upload.html';
+    } else {
+      label.textContent = 'Go to Browse';
+      goBtn.dataset.href = 'browse.html';
+    }
+  }
+</script>
+</body>
+</html>

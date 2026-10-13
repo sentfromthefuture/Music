@@ -1,0 +1,305 @@
+/* generated from legacy/original/account.html by tools/convert-page.mjs */
+#zs-view {
+  --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #1e6feb;
+    --accent-ink: #ffffff;
+    --lime: #65a30d;
+    --teal: #60a5fa;
+    --danger: #b3261e;
+    --radius: 10px;
+}
+#zs-view * {
+  box-sizing: border-box;
+}
+#zs-view,
+#zs-view {
+  height: 100%;
+}
+#zs-view {
+  margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+    overflow-x: hidden;
+}
+#zs-view .bg-blobs {
+  position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none;
+}
+#zs-view .blob {
+  position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.24;
+}
+#zs-view .blob-1 {
+  width: 300px; height: 300px; background: var(--accent); top: -100px; left: -80px; animation: float1 16s ease-in-out infinite;
+}
+#zs-view .blob-2 {
+  width: 260px; height: 260px; background: var(--lime); bottom: -90px; right: -60px; animation: float2 20s ease-in-out infinite;
+}
+#zs-view .blob-3 {
+  width: 200px; height: 200px; background: var(--teal); top: 46%; right: -80px; animation: float3 18s ease-in-out infinite;
+}
+@keyframes float1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(36px, 46px) scale(1.12); } }
+@keyframes float2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-34px, -26px) scale(1.16); } }
+@keyframes float3 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-24px, 34px) scale(0.9); } }
+@media (prefers-reduced-motion: reduce) {
+#zs-view .blob {
+  animation: none !important;
+}
+}
+#zs-view .wrap {
+  position: relative; z-index: 1; max-width: 420px; margin: 0 auto; padding: 20px 16px 60px;
+}
+#zs-view .eq {
+  display: flex; align-items: flex-end; gap: 4px; height: 20px; margin-bottom: 10px;
+}
+#zs-view .eq span {
+  width: 4px; background: var(--accent); border-radius: 2px; transform-origin: bottom; animation: eq 1.1s ease-in-out infinite;
+}
+#zs-view .eq span:nth-child(1) {
+  height: 40%; animation-delay: 0s;
+}
+#zs-view .eq span:nth-child(2) {
+  height: 75%; animation-delay: 0.15s;
+}
+#zs-view .eq span:nth-child(3) {
+  height: 100%; animation-delay: 0.3s;
+}
+#zs-view .eq span:nth-child(4) {
+  height: 60%; animation-delay: 0.45s;
+}
+#zs-view .eq span:nth-child(5) {
+  height: 85%; animation-delay: 0.6s;
+}
+@keyframes eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) {
+#zs-view .eq span {
+  animation: none; transform: scaleY(0.7);
+}
+}
+#zs-view .header-row {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+}
+#zs-view .header-left {
+  display: flex; align-items: center; gap: 10px;
+}
+#zs-view #back-link {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--ink); font-size: 16px;
+    transition: background 0.2s ease;
+}
+#zs-view #back-link:active {
+  background: var(--border);
+}
+#zs-view h1 {
+  font-size: 18px; font-weight: 600; margin: 0;
+}
+#zs-view #logout-btn {
+  background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--ink-muted);
+    font-size: 12px; padding: 6px 10px; cursor: pointer; transition: background 0.2s ease;
+}
+#zs-view #logout-btn:active {
+  background: var(--surface-alt);
+}
+#zs-view .card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(20, 24, 28, 0.03); animation: rise 0.5s ease both;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+#zs-view .card {
+  animation: none !important;
+}
+}
+#zs-view .profile-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+#zs-view .avatar-ring {
+  width: 52px; height: 52px; border-radius: 50%; padding: 3px; margin-bottom: 10px;
+    background: conic-gradient(from 180deg, var(--accent), var(--lime), var(--accent));
+}
+#zs-view .avatar {
+  width: 100%; height: 100%; border-radius: 50%; background: var(--surface); display: flex; align-items: center;
+    justify-content: center; font-weight: 600; font-size: 15px; color: var(--accent);
+}
+#zs-view .name {
+  font-size: 15px; font-weight: 600; margin: 0;
+}
+#zs-view .role {
+  font-size: 12px; color: var(--ink-muted); margin: 2px 0 0;
+}
+#zs-view .member-since {
+  font-size: 11px; color: var(--ink-muted); margin: 2px 0 0;
+}
+#zs-view .bio {
+  font-size: 13px; color: var(--ink-muted); margin: 8px 0 0; line-height: 1.5;
+}
+#zs-view .bio.empty {
+  font-style: italic;
+}
+#zs-view #edit-profile-btn {
+  flex-shrink: 0; background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink-muted); font-size: 11px; font-weight: 600; padding: 6px 10px; cursor: pointer;
+    transition: background 0.2s ease;
+}
+#zs-view #edit-profile-btn:active {
+  background: var(--surface-alt);
+}
+#zs-view .edit-form label {
+  display: block; font-size: 11px; font-weight: 600; color: var(--ink-muted); margin: 12px 0 4px;
+}
+#zs-view .edit-form label:first-child {
+  margin-top: 0;
+}
+#zs-view .edit-form input,
+#zs-view .edit-form textarea {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: var(--bg); color: var(--ink); resize: vertical;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+#zs-view .edit-form input:focus,
+#zs-view .edit-form textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(30, 111, 235, 0.15);
+}
+#zs-view .edit-form textarea {
+  min-height: 70px;
+}
+#zs-view .edit-actions {
+  display: flex; gap: 8px; margin-top: 14px;
+}
+#zs-view .edit-actions button {
+  flex: 1; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: transform 0.12s ease, opacity 0.2s ease;
+}
+#zs-view .edit-actions button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+#zs-view #save-profile-btn {
+  border: none; background: var(--accent); color: var(--accent-ink);
+}
+#zs-view #save-profile-btn:disabled {
+  opacity: 0.6; cursor: not-allowed;
+}
+#zs-view #cancel-profile-btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+}
+#zs-view .edit-error {
+  font-size: 12px; color: var(--danger); margin: 8px 0 0;
+}
+#zs-view .spinner {
+  width: 13px; height: 13px; border: 2px solid rgba(255, 255, 255, 0.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#zs-view .stats-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px;
+}
+#zs-view .stat-tile {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center;
+    animation: rise 0.5s ease both; animation-delay: 0.08s;
+}
+#zs-view .stat-value {
+  font-size: 20px; font-weight: 700; margin: 0; color: var(--accent);
+}
+#zs-view .stat-label {
+  font-size: 11px; color: var(--ink-muted); margin: 2px 0 0;
+}
+#zs-view h2 {
+  font-size: 14px; font-weight: 600; margin: 16px 0 10px;
+}
+#zs-view h2:first-of-type {
+  margin-top: 0;
+}
+#zs-view .list-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 14px; margin-bottom: 4px;
+}
+#zs-view .list-row {
+  display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px;
+}
+#zs-view .list-row:last-child {
+  border-bottom: none;
+}
+#zs-view .list-row .name {
+  font-size: 13px; font-weight: 500;
+}
+#zs-view .list-row .sub {
+  font-size: 11px; color: var(--ink-muted);
+}
+#zs-view .list-row a.mini-btn,
+#zs-view .list-row button.mini-btn {
+  flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 6px;
+    background: var(--accent); color: var(--accent-ink); text-decoration: none; border: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; transition: transform 0.12s ease, opacity 0.2s ease;
+}
+#zs-view .list-row a.mini-btn:active,
+#zs-view .list-row button.mini-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+#zs-view .list-row button.mini-btn:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+#zs-view .fav-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+}
+#zs-view .fav-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    text-decoration: none; color: inherit; display: block; transition: transform 0.15s ease;
+}
+#zs-view .fav-card:active {
+  transform: scale(0.98);
+}
+#zs-view .fav-cover {
+  aspect-ratio: 1; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; color: var(--ink-muted); font-size: 20px; background-size: cover; background-position: center;
+}
+#zs-view .fav-info {
+  padding: 8px;
+}
+#zs-view .fav-title {
+  font-size: 12px; font-weight: 500; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#zs-view .fav-artist {
+  font-size: 11px; color: var(--ink-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#zs-view a.link-row {
+  display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--ink);
+    text-decoration: none; padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+#zs-view a.link-row:last-child {
+  border-bottom: none;
+}
+#zs-view a.link-row span.arrow {
+  color: var(--accent);
+}
+#zs-view #become-artist-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 10px; border: none; border-radius: 8px; background: var(--accent);
+    color: var(--accent-ink); font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: transform 0.12s ease;
+}
+#zs-view #become-artist-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+#zs-view #become-artist-btn:disabled {
+  opacity: 0.6; cursor: not-allowed;
+}
+#zs-view .gate-msg,
+#zs-view .empty-state {
+  text-align: center; color: var(--ink-muted); font-size: 14px; padding: 30px 0;
+}
+#zs-view .gate-msg {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+#zs-view .gate-msg {
+  animation: none;
+}
+}
+#zs-view .hidden {
+  display: none !important;
+}

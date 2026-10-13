@@ -1,0 +1,359 @@
+/* generated from tools/css-src/browse.css by tools/build-view-css.mjs */
+#zs-view {
+  --bg: #f6f7f5;
+    --surface: #ffffff;
+    --surface-alt: #eef0ed;
+    --border: #dfe2de;
+    --ink: #14181c;
+    --ink-muted: #5b6560;
+    --accent: #1e6feb;
+    --accent-ink: #ffffff;
+    --success: #2f8f5b;
+    --stat-green: #34b871;
+    --danger: #b3261e;
+    --radius: 10px;
+}
+#zs-view * {
+  box-sizing: border-box;
+}
+#zs-view {
+  margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+#zs-view .wrap {
+  max-width: 480px; margin: 0 auto; padding: 20px 16px 60px;
+}
+#zs-view .header-row {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+}
+#zs-view h1 {
+  font-size: 18px; font-weight: 600; margin: 0;
+}
+#zs-view .sub {
+  font-size: 13px; color: var(--ink-muted); margin: 0 0 16px;
+}
+#zs-view #account-link {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--surface-alt);
+    display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--ink-muted); font-size: 14px;
+}
+#zs-view .chips {
+  display: flex; gap: 6px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 2px;
+}
+#zs-view .chip {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    background: var(--surface-alt); border: 1px solid var(--border); color: var(--ink-muted); cursor: pointer; white-space: nowrap;
+}
+#zs-view .chip.active {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+}
+#zs-view .artist-strip {
+  display: flex; gap: 12px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px;
+}
+#zs-view .artist-chip {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; cursor: pointer; width: 60px;
+}
+#zs-view .artist-avatar {
+  width: 48px; height: 48px; border-radius: 50%; background: var(--surface-alt); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: var(--accent); border: 2px solid transparent;
+}
+#zs-view .artist-chip.active .artist-avatar {
+  border-color: var(--accent);
+}
+#zs-view .artist-name {
+  font-size: 10px; color: var(--ink-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
+}
+#zs-view .filter-pill {
+  display: inline-flex; align-items: center; gap: 6px; background: var(--surface-alt); border-radius: 20px; padding: 6px 12px; font-size: 12px; margin-bottom: 12px;
+}
+#zs-view .filter-pill button {
+  background: none; border: none; color: var(--ink-muted); cursor: pointer; font-size: 13px; font-weight: 700; padding: 0;
+}
+#zs-view .hidden {
+  display: none;
+}
+#zs-view #load-more-btn {
+  display: block; width: 100%; margin-top: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+#zs-view #load-more-btn:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+#zs-view #load-more-btn.hidden {
+  display: none;
+}
+#zs-view .empty-state,
+#zs-view .loading-state {
+  text-align: center; color: var(--ink-muted); font-size: 14px; padding: 40px 0; grid-column: 1 / -1;
+}
+#zs-view .rank-section-head {
+  display: flex; align-items: baseline; justify-content: space-between; margin: 18px 0 10px;
+}
+#zs-view .rank-section-head--first {
+  margin-top: 4px;
+}
+#zs-view .section-title {
+  display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; margin: 0;
+}
+#zs-view .see-all {
+  flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--accent);
+    background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+}
+#zs-view .see-all:disabled {
+  opacity: 0.4; cursor: default;
+}
+#zs-view .rank-scroll {
+  display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding: 14px 2px 10px 14px;
+    margin: -12px -2px 0 -14px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+#zs-view .rank-scroll::-webkit-scrollbar {
+  display: none;
+}
+#zs-view .rank-scroll .empty-state,
+#zs-view .rank-scroll .loading-state {
+  flex: 1 0 100%; padding: 20px 0;
+}
+#zs-view .rank-card {
+  position: relative;
+    flex: 0 0 clamp(126px, 32vw, 156px);
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+#zs-view .rank-card-body {
+  display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+#zs-view .rank-card.medal-1 .rank-card-body {
+  border: 2px solid transparent;
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(135deg, #ffe9ad, #a1690c) border-box;
+    box-shadow: 0 4px 14px rgba(184,124,10,0.32), 0 0 0 1px rgba(184,124,10,0.12);
+    animation: goldPulse 3.2s ease-in-out infinite;
+}
+#zs-view .rank-card.medal-2 .rank-card-body {
+  border: 2px solid transparent;
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(135deg, #f4f6f7, #767f88) border-box;
+    box-shadow: 0 4px 12px rgba(120,128,136,0.28), 0 0 0 1px rgba(120,128,136,0.10);
+}
+#zs-view .rank-card.medal-3 .rank-card-body {
+  border: 2px solid transparent;
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      linear-gradient(135deg, #e7ac78, #6f451e) border-box;
+    box-shadow: 0 4px 12px rgba(111,69,30,0.28), 0 0 0 1px rgba(111,69,30,0.10);
+}
+@keyframes goldPulse {
+    0%, 100% { box-shadow: 0 4px 14px rgba(184,124,10,0.32), 0 0 0 1px rgba(184,124,10,0.12); }
+    50%      { box-shadow: 0 4px 20px rgba(244,187,63,0.5),  0 0 0 1px rgba(244,187,63,0.22); }
+  }
+@media (prefers-reduced-motion: reduce) {
+#zs-view .rank-card.medal-1 .rank-card-body {
+  animation: none;
+}
+}
+#zs-view .rank-card-thumb {
+  position: relative;
+    aspect-ratio: 1;
+    background: var(--surface-alt);
+    background-size: cover;
+    background-position: center;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-muted); font-size: 22px;
+}
+#zs-view .rank-card-badge {
+  position: absolute; top: 6px; left: 6px;
+    min-width: 20px; height: 20px; padding: 0 5px;
+    border-radius: 10px; background: rgba(20,24,28,0.72); color: #fff;
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+#zs-view .rank-medal-badge {
+  position: absolute;
+    top: -9px; left: -9px;
+    width: clamp(30px, 26%, 40px);
+    height: auto;
+    z-index: 3;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35));
+    pointer-events: none;
+}
+#zs-view .rank-card-menu {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(255,255,255,0.88); border: none; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; line-height: 1; color: var(--ink-muted); cursor: pointer; padding: 0;
+}
+#zs-view .rank-card-info {
+  padding: 8px; min-width: 0;
+}
+#zs-view .rank-card-title {
+  font-size: 12.5px; font-weight: 600; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#zs-view .rank-card-artist {
+  font-size: 11px; color: var(--ink-muted); margin: 1px 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#zs-view .rank-card-stat-row {
+  display: flex; align-items: center; gap: 5px; min-width: 0;
+}
+#zs-view .rank-stat-icon {
+  flex-shrink: 0; width: 15px; height: 15px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; line-height: 1; font-weight: 700;
+}
+#zs-view .rank-stat-icon.trend-up {
+  background: linear-gradient(135deg, #5bd394, var(--stat-green));
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(52,184,113,0.14);
+}
+#zs-view .rank-stat-icon.trend-down {
+  background: linear-gradient(135deg, #ef8a84, var(--danger));
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(179,38,30,0.14);
+}
+#zs-view .rank-stat-icon.trend-same {
+  background: #ffffff;
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+}
+#zs-view .rank-card-stat {
+  font-size: 11px; font-weight: 700; color: var(--stat-green); margin: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 0 10px rgba(52,184,113,0.22);
+}
+#zs-view .wrap {
+  max-width: 1120px; margin: 0 auto; padding: 16px 16px 24px;
+}
+#zs-view h1 {
+  font-size: 26px; font-weight: 800; letter-spacing: -.01em;
+}
+#zs-view .sub {
+  margin: 2px 0 14px;
+}
+#zs-view .search-wrap {
+  position: relative;
+}
+#zs-view .search-ico {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-muted); display: inline-flex; pointer-events: none;
+}
+#zs-view #search-input {
+  width: 100%; height: 46px; padding: 0 16px 0 42px; border: 1px solid var(--border); border-radius: 999px; font-size: 16px; background: var(--surface); color: var(--ink); font-family: inherit;
+}
+#zs-view #search-input:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 1px;
+}
+#zs-view .chips {
+  margin: 12px 0 16px; padding: 2px 0 4px; scrollbar-width: none;
+}
+#zs-view .chips::-webkit-scrollbar {
+  display: none;
+}
+#zs-view .chip {
+  min-height: 36px; padding: 6px 16px; font-size: 13px; font-family: inherit;
+}
+#zs-view .artist-strip {
+  gap: 14px; scrollbar-width: none;
+}
+#zs-view .artist-strip::-webkit-scrollbar {
+  display: none;
+}
+#zs-view .artist-chip {
+  width: 68px; font-family: inherit;
+}
+#zs-view .artist-avatar {
+  width: 56px; height: 56px; font-size: 15px;
+}
+#zs-view .artist-name {
+  font-size: 11px;
+}
+#zs-view .section-title {
+  font-size: 17px;
+}
+#zs-view .see-all {
+  min-height: 32px;
+}
+#zs-view .rank-scroll {
+  scroll-padding-left: 14px;
+}
+#zs-view .rank-card-art {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 0;
+}
+#zs-view .rank-card-art img {
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+}
+#zs-view .rank-card-link {
+  display: block; color: inherit; text-decoration: none;
+}
+#zs-view .rank-card-thumb {
+  overflow: hidden;
+}
+#zs-view .rank-card-badge {
+  z-index: 2;
+}
+#zs-view .rank-card-art .zs-cardcover-glyph {
+  font-size: 22px;
+}
+#zs-view .feed-head {
+  display: flex; align-items: baseline; justify-content: space-between; margin: 22px 0 10px;
+}
+#zs-view .grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+}
+@media (min-width: 560px) {
+#zs-view .grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+}
+@media (min-width: 800px) {
+#zs-view .grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;
+}
+}
+@media (min-width: 1040px) {
+#zs-view .grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+}
+#zs-view .empty-state,
+#zs-view .loading-state {
+  grid-column: 1 / -1;
+}
+#zs-view .state-box {
+  grid-column: 1 / -1; text-align: center; padding: 36px 12px; color: var(--ink-muted);
+}
+#zs-view .state-box .zs-btn {
+  margin-top: 10px;
+}
+#zs-view #load-more-btn {
+  max-width: 320px; margin: 18px auto 0; min-height: 44px; font-family: inherit;
+}
+#zs-view .rail-hidden {
+  display: none !important;
+}
+@media (min-width: 900px) {
+#zs-view .rank-scroll {
+  padding-right: 14px;
+}
+}
+#zs-view .zs-card--rail {
+  flex: 0 0 clamp(126px, 32vw, 156px); scroll-snap-align: start;
+}
+#zs-view .filter-pill a {
+  margin-left: 4px;
+}
+#zs-view .rank-card-art {
+  display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0d3f8f, #2fbf5c);
+}

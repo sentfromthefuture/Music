@@ -1,6 +1,7 @@
 // Adapter view generated from legacy/original/admin.html (tools/convert-page.mjs).
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
+import { tierLabel } from '../lib/licenses.js';
 
 export const title = "Admin — Music Platform";
 export const css = 'css/views/admin.css';
@@ -307,7 +308,7 @@ export async function mount({ supabase, timers: __t, document }) {
       const item = itemMap.get(`${purchase.item_type}-${purchase.item_id}`) || { title: '(item not found)', path: null };
       const card = cardShell(`
         <p class="title">${escapeHtml(item.title)}</p>
-        <p class="meta">Buyer: ${escapeHtml(purchase.buyer_contact)} · K${purchase.amount}</p>
+        <p class="meta">Buyer: ${escapeHtml(purchase.buyer_contact)} · K${purchase.amount}${purchase.license_tier ? ' · ' + escapeHtml(tierLabel(purchase.license_tier)) : ''}</p>
         <div class="ref-badge">${escapeHtml(purchase.reference_number)}</div>
         <div class="sms-box">${escapeHtml(purchase.transaction_sms || '(no SMS text)')}</div>
         <div class="row-actions">

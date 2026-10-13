@@ -19,6 +19,7 @@ const ROUTES = {
   'upload.html': () => import('../views/upload.js'),
   'admin.html': () => import('../views/admin.js'),
   'download.html': () => import('../views/download.js'),
+  'license.html': () => import('../views/license.js'),
 };
 
 const baseDir = new URL('.', location.href).pathname;

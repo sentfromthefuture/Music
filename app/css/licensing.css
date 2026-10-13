@@ -1,0 +1,45 @@
+/* Beat licensing UI (tiers, license buttons, stems). Prefixed .lic- so it can never collide with view styles. */
+.lic-tiers { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+.lic-tier { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--zs-border); border-radius: 12px; background: var(--zs-surface); color: var(--zs-ink); text-decoration: none; }
+.lic-tier:hover { border-color: var(--zs-accent); }
+.lic-tier-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lic-tier-name { font-weight: 700; font-size: 15px; }
+.lic-tier-blurb { font-size: 12.5px; color: var(--zs-ink-muted); }
+.lic-tier-price { font-weight: 800; font-size: 18px; }
+.lic-tier-buy { background: var(--zs-ink); color: #fff; border-radius: 999px; padding: 8px 16px; font-weight: 700; font-size: 14px; }
+.lic-terms { margin: 4px 0 12px; font-size: 13px; color: var(--zs-ink-muted); }
+.lic-terms summary { cursor: pointer; font-weight: 600; color: var(--zs-ink); padding: 6px 0; }
+.lic-terms h4 { margin: 12px 0 4px; font-size: 13px; color: var(--zs-ink); }
+.lic-terms ul { margin: 0; padding-left: 18px; }
+.lic-terms li { margin: 2px 0; }
+.lic-note { font-size: 12px; color: var(--zs-ink-muted); margin: 6px 0 0; }
+.lic-btn { appearance: none; border: 1px solid var(--zs-border); background: var(--zs-surface); color: var(--zs-ink); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+.lic-btn:disabled { opacity: .5; cursor: default; }
+.lic-btn--primary { background: var(--zs-accent); border-color: var(--zs-accent); color: #fff; }
+.lic-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.lic-msg { font-size: 12.5px; margin: 6px 0 0; color: var(--zs-ink-muted); }
+.lic-msg.is-error { color: var(--zs-danger); }
+/* upload form */
+.lic-form { border: 1px solid var(--zs-border); border-radius: 12px; padding: 12px; margin: 10px 0; background: var(--zs-surface); }
+.lic-form-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--zs-border); }
+.lic-form-row:first-of-type { border-top: 0; }
+.lic-form-row label { display: flex; align-items: center; gap: 8px; flex: 1; font-weight: 600; margin: 0; }
+#zs-view .lic-form-row input[type=number] { width: 110px; flex: none; }
+#zs-view .lic-form input[type=checkbox], #zs-view .lic-check input { width: auto; flex: none; }
+#zs-view .lic-form-row label { display: flex; align-items: center; gap: 8px; flex: 1; font-weight: 600; margin: 0; }
+#zs-view .lic-check { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0; font-size: 13px; font-weight: 400; }
+.lic-form small { color: var(--zs-ink-muted); display: block; font-weight: 400; }
+.lic-check { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0; font-size: 13px; }
+.lic-check input { margin-top: 3px; }
+/* verify page */
+.lic-verify { max-width: 520px; margin: 24px auto; padding: 0 16px; }
+.lic-card { border: 1px solid var(--zs-border); border-radius: 14px; background: var(--zs-surface); padding: 18px; }
+.lic-ok { color: #1c8a4c; font-weight: 800; font-size: 18px; margin: 0 0 10px; }
+.lic-bad { color: var(--zs-danger); font-weight: 800; font-size: 18px; margin: 0 0 10px; }
+.lic-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+.lic-dl dt { color: var(--zs-ink-muted); } .lic-dl dd { margin: 0; font-weight: 600; word-break: break-word; }
+.lic-requests { border: 1px solid var(--zs-border); border-radius: 12px; background: var(--zs-surface); padding: 12px 14px; margin: 14px 0; }
+.lic-requests h3 { margin: 0 0 8px; font-size: 15px; }
+.lic-req { border-top: 1px solid var(--zs-border); padding: 10px 0; font-size: 13.5px; }
+.lic-req:first-of-type { border-top: 0; }
+.lic-req p { margin: 2px 0; }

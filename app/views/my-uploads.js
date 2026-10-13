@@ -1,6 +1,8 @@
 // Adapter view generated from legacy/original/my-uploads.html (tools/convert-page.mjs).
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
+import { licensingEnabled } from '../lib/licenses.js';
+import { mountStemRequests } from '../ui/stem-requests.js';
 
 export const title = "My Uploads — Music Platform";
 export const css = 'css/views/my-uploads.css';
@@ -72,7 +74,7 @@ export async function mount({ supabase, timers: __t, document }) {
   }
 
   function cardHtml(item) {
-    const label = STATUS_LABELS[item.status] || item.status;
+    const label = item.exclusive_sold ? 'Sold exclusively' : (STATUS_LABELS[item.status] || item.status);
     const paySection = item.status === 'pending_payment' ? `
       <div class="pay-section" data-pay-section>
         <div class="ref-badge">
@@ -138,6 +140,7 @@ export async function mount({ supabase, timers: __t, document }) {
   }
 
   let uploads = [];
+  let stemsMounted = false;
 
   async function loadUploads() {
     const [{ data: tracks }, { data: beats }] = await Promise.all([
@@ -151,6 +154,14 @@ export async function mount({ supabase, timers: __t, document }) {
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     renderList();
+    if (!stemsMounted) {
+      stemsMounted = true;
+      licensingEnabled().then((on) => {
+        if (!on) return;
+        mountStemRequests({ supabase, container: list.parentNode, before: list, userId: currentUserId,
+          titleFor: (beatId) => (uploads.find((u) => u.itemType === 'beat' && String(u.id) === String(beatId)) || {}).title });
+      }).catch(() => {});
+    }
   }
 
   function renderList() {

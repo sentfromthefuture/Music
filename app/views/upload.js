@@ -1,6 +1,7 @@
 // Adapter view generated from legacy/original/upload.html (tools/convert-page.mjs).
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
+import { licensingEnabled, TIERS, loadCssOnce } from '../lib/licenses.js';
 
 export const title = "Upload — Music Platform";
 export const css = 'css/views/upload.css';
@@ -62,6 +63,24 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
       <div id="amount-field" class="hidden" style="margin-top:10px;">
         <input type="number" id="price" min="1" step="1" placeholder="Amount in Kwacha" />
       </div>
+    </div>
+
+    <div id="tiers-field" class="hidden">
+      <label>Licenses you sell</label>
+      <div class="lic-form">
+        <div class="lic-form-row" data-tier-row="basic"><label><input type="checkbox" data-tier-on checked /><span>Basic lease<small>MP3 · 1 song · non-exclusive</small></span></label><input type="number" min="1" step="1" placeholder="Price (K)" data-tier-price aria-label="Basic lease price in Kwacha" /></div>
+        <div class="lic-form-row" data-tier-row="premium"><label><input type="checkbox" data-tier-on /><span>Premium lease<small>Wider use · non-exclusive</small></span></label><input type="number" min="1" step="1" placeholder="Price (K)" data-tier-price aria-label="Premium lease price in Kwacha" /></div>
+        <div class="lic-form-row" data-tier-row="exclusive"><label><input type="checkbox" data-tier-on /><span>Exclusive license<small>Beat leaves the store once sold</small></span></label><input type="number" min="1" step="1" placeholder="Price (K)" data-tier-price aria-label="Exclusive license price in Kwacha" /></div>
+        <label class="lic-check"><input type="checkbox" id="offer-extras" /><span>I can provide WAV and stems on request (Premium and Exclusive buyers)</span></label>
+        <label for="extras-link">WAV / stems link (optional)</label>
+        <input type="text" id="extras-link" inputmode="url" placeholder="https://drive.google.com/…" />
+        <p class="lic-note">Only Premium and Exclusive buyers can see this link, and only after you are paid. It uses none of your storage.</p>
+      </div>
+      <label for="music-key">Key (optional)</label>
+      <input type="text" id="music-key" maxlength="20" placeholder="e.g. F# minor" />
+      <label for="beat-tags">Mood tags (optional)</label>
+      <input type="text" id="beat-tags" maxlength="80" placeholder="e.g. dark, party, chill" />
+      <label class="lic-check"><input type="checkbox" id="rights-confirm" /><span>I made this beat, or I have the right to license it (any samples in it are cleared).</span></label>
     </div>
 
     <label>Cover image</label>
@@ -146,6 +165,27 @@ export async function mount({ supabase, timers: __t, document }) {
   let selectedType = 'track';
   let isFree = true;
 
+  // Beat license tiers: shown only once the database upgrade (supabase/beat-licensing.sql) has been run.
+  let licensingOn = false;
+  function syncTiersUi() {
+    const useTiers = selectedType === 'beat' && licensingOn;
+    document.getElementById('tiers-field').classList.toggle('hidden', !useTiers);
+    document.getElementById('price-field').classList.toggle('hidden', useTiers);
+  }
+  licensingEnabled().then((on) => { licensingOn = on; if (on) loadCssOnce('app/css/licensing.css'); syncTiersUi(); });
+  function collectTiers() {
+    const out = {}; const extras = document.getElementById('offer-extras').checked;
+    for (const key of ['basic', 'premium', 'exclusive']) {
+      const row = document.querySelector(`[data-tier-row="${key}"]`);
+      if (!row.querySelector('[data-tier-on]').checked) continue;
+      const price = Math.round(Number(row.querySelector('[data-tier-price]').value || 0));
+      if (!(price > 0)) return { error: `Set a price for the ${TIERS[key].label}.` };
+      out[key] = key === 'basic' ? { price } : { price, extras };
+    }
+    if (!Object.keys(out).length) return { error: 'Choose at least one license and set its price.' };
+    return { tiers: out };
+  }
+
   // Type toggle
   document.querySelectorAll('.type-toggle button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -161,6 +201,7 @@ export async function mount({ supabase, timers: __t, document }) {
         isFree = false;
         document.getElementById('amount-field').classList.remove('hidden');
       }
+      syncTiersUi();
       maybeShowWaveform();
     });
   });
@@ -489,7 +530,11 @@ export async function mount({ supabase, timers: __t, document }) {
     const title = document.getElementById('title').value.trim();
     const genre = document.getElementById('genre').value;
     const bpm = document.getElementById('bpm').value || null;
-    const price = isFree ? 0 : Number(document.getElementById('price').value || 0);
+    const useTiers = selectedType === 'beat' && licensingOn;
+    const tiersResult = useTiers ? collectTiers() : null;
+    const price = useTiers
+      ? (tiersResult.tiers ? Math.min(...Object.values(tiersResult.tiers).map((t) => t.price)) : 0)
+      : (isFree ? 0 : Number(document.getElementById('price').value || 0));
     const coverFile = document.getElementById('cover-input').files[0];
     const audioFile = document.getElementById('audio-input').files[0];
 
@@ -497,6 +542,15 @@ export async function mount({ supabase, timers: __t, document }) {
       setStatus('Please fill in title, genre, and choose an audio file.', true);
       setButtonLoading(submitBtn, false);
       return;
+    }
+    let extrasLink = '', musicKey = '', tagList = [];
+    if (useTiers) {
+      if (tiersResult.error) { setStatus(tiersResult.error, true); setButtonLoading(submitBtn, false); return; }
+      extrasLink = document.getElementById('extras-link').value.trim();
+      if (extrasLink && !/^https?:\/\/\S+$/i.test(extrasLink)) { setStatus('The WAV / stems link must start with https://', true); setButtonLoading(submitBtn, false); return; }
+      if (!document.getElementById('rights-confirm').checked) { setStatus('Please confirm you made this beat or have the right to license it.', true); setButtonLoading(submitBtn, false); return; }
+      musicKey = document.getElementById('music-key').value.trim().slice(0, 20);
+      tagList = [...new Set(document.getElementById('beat-tags').value.split(',').map((t) => t.trim().toLowerCase().slice(0, 20)).filter(Boolean))].slice(0, 6);
     }
     if (!isFree && (!price || price <= 0)) {
       setStatus('Please set a price.', true);
@@ -571,7 +625,7 @@ export async function mount({ supabase, timers: __t, document }) {
       for (let attempt = 0; attempt < 5 && !insertedRow; attempt++) {
         const reference_number = genRef(prefix);
         const payload = selectedType === 'beat'
-          ? { owner_id: user.id, title, genre, bpm: bpm ? Number(bpm) : null, price, preview_path: previewPath, full_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration }
+          ? { owner_id: user.id, title, genre, bpm: bpm ? Number(bpm) : null, price, preview_path: previewPath, full_path: fullPath, cover_url: coverUrl, ...(useTiers ? { license_tiers: tiersResult.tiers, music_key: musicKey || null, tags: tagList.length ? tagList : null, rights_confirmed: true } : {}), status: 'pending_payment', reference_number, duration_seconds: duration }
           : { owner_id: user.id, title, genre, is_free: isFree, price, preview_path: previewPath, file_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration };
 
         const { data, error } = await supabase.from(table).insert(payload).select().single();
@@ -579,6 +633,11 @@ export async function mount({ supabase, timers: __t, document }) {
         if (error.code !== '23505') throw error; // not a reference-number collision, give up
       }
       if (!insertedRow) throw new Error('Could not generate a unique reference number, please try again.');
+
+      if (useTiers && extrasLink) {
+        // Private link for Premium/Exclusive buyers (RLS-protected table); a failure here must not block the upload.
+        try { await supabase.from('beat_extras').insert({ beat_id: String(insertedRow.id), link: extrasLink }); } catch (e) { console.error(e); }
+      }
 
       // 5. Show the pending-payment card
       showPendingCard(insertedRow, table);

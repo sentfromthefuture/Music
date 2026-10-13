@@ -1,6 +1,8 @@
 // Adapter view generated from legacy/original/checkout.html (tools/convert-page.mjs).
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
+import { readTiers, loadCssOnce } from '../lib/licenses.js';
+import { saveLicense } from '../ui/license-canvas.js';
 
 export const title = "Checkout — Music Platform";
 export const css = 'css/views/checkout.css';
@@ -98,11 +100,26 @@ export async function mount({ supabase, timers: __t, document }) {
       return;
     }
 
+    // Beats with license tiers need a chosen tier (?tier=basic|premium|exclusive); older beats don't.
+    const tiers = itemType === 'beat' ? readTiers(item) : null;
+    let chosen = null;
+    if (tiers) {
+      chosen = tiers.find((t) => t.key === params.get('tier')) || null;
+      if (!chosen) {
+        loading.textContent = '';
+        const a = document.createElement('a');
+        a.href = `detail.html?type=beat&id=${encodeURIComponent(item.id)}`;
+        a.textContent = 'Choose a license on the beat page';
+        loading.append('Please choose which license you want. ', a, '.');
+        return;
+      }
+    }
+
     loading.classList.add('hidden');
     content.classList.remove('hidden');
 
     document.getElementById('item-title').textContent = item.title;
-    document.getElementById('item-meta').textContent = `${item.genre || ''}${itemType === 'beat' ? ' · Beat' : ''}`;
+    document.getElementById('item-meta').textContent = `${item.genre || ''}${itemType === 'beat' ? ' · Beat' : ''}${chosen ? ' · ' + chosen.label : ''}`;
     if (item.cover_url) {
       const thumb = document.getElementById('item-thumb');
       thumb.style.backgroundImage = `url(${item.cover_url})`;
@@ -119,12 +136,23 @@ export async function mount({ supabase, timers: __t, document }) {
       document.getElementById('free-download-link').href = publicUrl;
     } else {
       document.getElementById('buy-section').classList.remove('hidden');
-      document.getElementById('price-display').textContent = `K${item.price}`;
-      wireBuyFlow(item, table);
+      document.getElementById('price-display').textContent = `K${chosen ? chosen.price : item.price}`;
+      wireBuyFlow(item, table, chosen);
     }
   })();
 
-  function wireBuyFlow(item, table) {
+  function wireBuyFlow(item, table, chosen) {
+    const unitPrice = chosen ? chosen.price : item.price;
+    // License beats ask for the name printed on the license.
+    let nameInput = null;
+    if (chosen) {
+      loadCssOnce('app/css/licensing.css');
+      const startBtn = document.getElementById('start-purchase-btn');
+      const lab = document.createElement('label'); lab.setAttribute('for', 'buyer-name-input'); lab.textContent = 'Name on your license';
+      nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.id = 'buyer-name-input'; nameInput.maxLength = 60; nameInput.placeholder = 'Your name or artist name'; nameInput.autocomplete = 'name';
+      startBtn.parentNode.insertBefore(lab, document.getElementById('phone-input').previousElementSibling);
+      startBtn.parentNode.insertBefore(nameInput, document.getElementById('phone-input').previousElementSibling);
+    }
     const phoneStep = document.getElementById('phone-step');
     const payStep = document.getElementById('pay-step');
     const waitingStep = document.getElementById('waiting-step');
@@ -137,6 +165,12 @@ export async function mount({ supabase, timers: __t, document }) {
 
     document.getElementById('start-purchase-btn').addEventListener('click', async () => {
       if (submitting) return;
+      const buyerName = nameInput ? nameInput.value.trim() : '';
+      if (nameInput && !buyerName) {
+        phoneStatus.textContent = 'Enter the name to print on your license.';
+        phoneStatus.classList.add('error');
+        return;
+      }
       const rawPhone = document.getElementById('phone-input').value;
       const phone = normalizeZambianPhone(rawPhone);
       if (!phone) {
@@ -157,8 +191,9 @@ export async function mount({ supabase, timers: __t, document }) {
           buyer_contact: phone,
           item_id: item.id,
           item_type: table === 'beats' ? 'beat' : 'track',
-          amount: item.price,
+          amount: unitPrice,
           reference_number,
+          ...(chosen ? { license_tier: chosen.key, buyer_name: buyerName } : {}),
         }).select().single();
         if (!error) { inserted = data; break; }
         if (error.code !== '23505') {
@@ -178,7 +213,7 @@ export async function mount({ supabase, timers: __t, document }) {
       purchaseRow = inserted;
       document.getElementById('ref-number').textContent = inserted.reference_number;
       document.getElementById('pay-instructions').innerHTML =
-        `Send Money for <strong>K${item.price}</strong> (the exact amount) via MoMo to <strong>0573 678 363</strong>, then paste your payment confirmation SMS below. Once your payment is approved, a download link will appear on your account profile — you're free to leave this page after submitting.`;
+        `Send Money for <strong>K${unitPrice}</strong> (the exact amount) via MoMo to <strong>0573 678 363</strong>, then paste your payment confirmation SMS below. Once your payment is approved, a download link will appear on your account profile — you're free to leave this page after submitting.`;
       phoneStep.classList.add('hidden');
       payStep.classList.remove('hidden');
 
@@ -208,6 +243,27 @@ export async function mount({ supabase, timers: __t, document }) {
       waitingStep.classList.remove('hidden');
     });
 
+    function showLicenseButton(row) {
+      const box = document.getElementById('fulfilled-step');
+      if (box.querySelector('.lic-actions')) return;
+      const wrap = document.createElement('div'); wrap.className = 'lic-actions';
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'lic-btn lic-btn--primary'; btn.textContent = 'Save your license';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        let producer = '';
+        try { const { data } = await supabase.from('profiles').select('display_name').eq('id', item.owner_id).maybeSingle(); producer = (data && data.display_name) || ''; } catch { /* name is optional */ }
+        await saveLicense({ licenseId: row.license_id, tier: row.license_tier, buyerName: row.buyer_name, beatTitle: item.title, producer, issuedAt: row.fulfilled_at, extras: chosen.extras });
+        btn.disabled = false;
+      });
+      wrap.append(btn);
+      box.append(wrap);
+      if (chosen.extras) {
+        const note = document.createElement('p'); note.className = 'lic-msg';
+        note.textContent = 'Need the WAV or stems? Open your account, find this purchase and tap "Stems & WAV".';
+        box.append(note);
+      }
+    }
+
     function subscribeToPurchase(id) {
       supabase
         .channel(`purchase-${id}`)
@@ -219,6 +275,7 @@ export async function mount({ supabase, timers: __t, document }) {
             waitingStep.classList.add('hidden');
             fulfilledStep.classList.remove('hidden');
             document.getElementById('paid-download-link').href = payload.new.download_url;
+            if (chosen) showLicenseButton(payload.new);
           }
         })
         .subscribe();

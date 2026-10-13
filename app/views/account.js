@@ -1,6 +1,8 @@
 // Adapter view generated from legacy/original/account.html (tools/convert-page.mjs).
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
+import { licensingEnabled } from '../lib/licenses.js';
+import { addLicenseControls } from '../ui/license-controls.js';
 
 export const title = "My Account — Music Platform";
 export const css = 'css/views/account.css';
@@ -281,13 +283,14 @@ export async function mount({ supabase, timers: __t, document }) {
 
     const trackIds = purchases.filter(p => p.item_type === 'track').map(p => p.item_id);
     const beatIds = purchases.filter(p => p.item_type === 'beat').map(p => p.item_id);
+    const lic = await licensingEnabled();
     const [{ data: trackItems }, { data: beatItems }] = await Promise.all([
       trackIds.length ? supabase.from('tracks').select('id, title, file_path').in('id', trackIds) : { data: [] },
-      beatIds.length ? supabase.from('beats').select('id, title, full_path').in('id', beatIds) : { data: [] },
+      beatIds.length ? supabase.from('beats').select(lic ? 'id, title, full_path, owner_id, license_tiers' : 'id, title, full_path').in('id', beatIds) : { data: [] },
     ]);
     const itemMap = new Map();
     (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { title: t.title, path: t.file_path }));
-    (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { title: b.title, path: b.full_path }));
+    (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { title: b.title, path: b.full_path, owner_id: b.owner_id, license_tiers: b.license_tiers }));
 
     container.innerHTML = '<div class="list-card"></div>';
     const listCard = container.querySelector('.list-card');
@@ -315,6 +318,7 @@ export async function mount({ supabase, timers: __t, document }) {
         e.target.disabled = false;
       });
       listCard.appendChild(row);
+      if (lic && purchase.license_id) addLicenseControls({ supabase, row, purchase, item });
     }
     if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
   }

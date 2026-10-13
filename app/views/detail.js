@@ -7,6 +7,7 @@ import * as P from '../player/player.js';
 import { loadFavorites } from '../lib/favorites.js';
 import { loadPromo } from '../lib/promo.js';
 import { loadScriptOnce } from '../lib/dom.js';
+import { readTiers, termsFor, loadCssOnce } from '../lib/licenses.js';
 import { icon } from '../ui/icons.js';
 import { coverEl, heartButton, itemCard, countLabel, wireGlobalSync } from '../ui/cards.js';
 import { createWaveform } from '../ui/waveform.js';
@@ -95,6 +96,19 @@ export async function mount(ctx) {
     actionBtn.textContent = 'Buy';
     actionBtn.href = `checkout.html?type=${itemType}&id=${item.id}`;
   }
+  // ---- beat license tiers (only when the beat has them; older beats keep the single Buy button) ----
+  const tiers = itemType === 'beat' ? readTiers(item) : null;
+  let tiersBlock = null;
+  if (tiers) {
+    loadCssOnce('app/css/licensing.css');
+    const list = h('div', { class: 'lic-tiers' }, ...tiers.map((t) => h('a', { class: 'lic-tier', href: `checkout.html?type=beat&id=${encodeURIComponent(item.id)}&tier=${t.key}` },
+      h('span', { class: 'lic-tier-main' }, h('span', { class: 'lic-tier-name' }, t.label), h('span', { class: 'lic-tier-blurb' }, t.blurb)),
+      h('span', { class: 'lic-tier-price' }, `K${t.price}`), h('span', { class: 'lic-tier-buy' }, 'Buy'))));
+    const terms = h('details', { class: 'lic-terms' }, h('summary', null, 'What each license includes'),
+      ...tiers.flatMap((t) => [h('h4', null, t.label), h('ul', null, ...termsFor(t.key, artistName, t.extras).map((x) => h('li', null, x)))]),
+      h('p', { class: 'lic-note' }, 'You get a license image with a verifiable ID after your payment is approved. This is a plain-language summary of the terms.'));
+    tiersBlock = h('div', null, list, terms);
+  }
   const shareBtn = h('button', { type: 'button', class: 'share-btn', 'aria-label': 'Share' });
   shareBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg> Share';
   shareBtn.addEventListener('click', async () => {
@@ -107,7 +121,7 @@ export async function mount(ctx) {
 
   content.replaceChildren(
     h('div', { class: 'detail-grid' }, cover,
-      h('div', { class: 'detail-main' }, ...info, playerBlock, price, h('div', { class: 'action-row' }, actionBtn, shareBtn))),
+      h('div', { class: 'detail-main' }, ...info, playerBlock, tiersBlock || price, h('div', { class: 'action-row' }, ...(tiersBlock ? [] : [actionBtn]), shareBtn))),
     h('section', { class: 'more', id: 'more', hidden: true }));
   loading.classList.add('hidden'); content.classList.remove('hidden');
   ctx.ready();

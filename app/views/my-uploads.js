@@ -3,6 +3,7 @@
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { licensingEnabled } from '../lib/licenses.js';
 import { mountStemRequests } from '../ui/stem-requests.js';
+import { complaintsEnabled, mountProducerComplaints } from '../ui/complaints.js';
 
 export const title = "My Uploads — Music Platform";
 export const css = 'css/views/my-uploads.css';
@@ -159,6 +160,11 @@ export async function mount({ supabase, timers: __t, document }) {
       licensingEnabled().then((on) => {
         if (!on) return;
         mountStemRequests({ supabase, container: list.parentNode, before: list, userId: currentUserId,
+          titleFor: (beatId) => (uploads.find((u) => u.itemType === 'beat' && String(u.id) === String(beatId)) || {}).title });
+      }).catch(() => {});
+      complaintsEnabled(supabase).then((on) => {
+        if (!on) return;
+        mountProducerComplaints({ supabase, container: list.parentNode, before: list, userId: currentUserId,
           titleFor: (beatId) => (uploads.find((u) => u.itemType === 'beat' && String(u.id) === String(beatId)) || {}).title });
       }).catch(() => {});
     }

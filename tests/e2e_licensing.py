@@ -74,26 +74,42 @@ def run():
         print('D. Account page: license, stems & WAV')
         e = lic_env(pw, user='u4'); p = e.open('account.html'); p.wait_for_selector('.lic-actions', timeout=8000); time.sleep(0.4)
         btns = p.locator('.lic-actions button').all_inner_texts()
-        check('license + stems buttons on a Premium purchase', btns == ['License', 'Stems & WAV'], str(btns))
+        check('license + stems buttons on a Premium purchase', btns == ['License', 'Stems & WAV', 'Report a problem'], str(btns))
         with p.expect_download(timeout=8000) as dl:
             p.locator('.lic-actions button', has_text='License').click()
         dl.value.save_as('/tmp/license-account.png'); ok, w, h, n = png_info('/tmp/license-account.png')
         check('account license image is a valid PNG', ok and n > 20000)
         p.locator('.lic-actions button', has_text='Stems').click(); p.wait_for_selector('a.lic-btn--primary', timeout=5000)
         check('producer link visible to the Premium buyer', p.locator('a.lic-btn--primary').get_attribute('href') == 'https://drive.example.com/stems-3')
-        p.locator('button', has_text='Request stems').click(); time.sleep(0.8)
+        p.locator('button', has_text='Ask the producer').click(); time.sleep(0.8)
         req = p.evaluate("() => (window.__ins || []).filter((i) => i.t === 'stem_requests').map((i) => i.payload)")
         check('stems request saved for the right purchase and producer', len(req) == 1 and req[0].get('purchase_id') == '500' and req[0].get('producer_id') == 'u2' and req[0].get('buyer_name') == 'Mulenga K', str(req))
         check('button shows the waiting state', 'waiting' in p.locator('button', has_text='Requested').inner_text().lower())
+        # complaint: "Report a problem" -> saved for the right purchase/producer, shown to the buyer
+        p.locator('.lic-actions button', has_text='Report a problem').click()
+        p.fill('.lic-actions ~ div textarea', 'The WAV folder is empty'); p.locator('button', has_text='Send to ZAMI').click(); time.sleep(0.8)
+        comp = p.evaluate("() => (window.__ins || []).filter((i) => i.t === 'purchase_complaints').map((i) => i.payload)")
+        check('complaint saved for the right purchase, producer and buyer', len(comp) == 1 and comp[0].get('purchase_id') == '500' and comp[0].get('producer_id') == 'u2' and comp[0].get('buyer_name') == 'Mulenga K' and comp[0].get('message') == 'The WAV folder is empty', str(comp))
+        check('buyer sees confirmation', 'notified' in p.locator('.lic-msg', has_text='notified').inner_text().lower())
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 
         # ------------------------------------------------ E. producer: requests inbox + exclusive badge
         print('E. My Uploads (producer)')
-        e = lic_env(pw, user='u2'); p = e.open('my-uploads.html'); p.wait_for_selector('.lic-requests', timeout=8000)
-        check('producer sees the stems request with buyer contact', 'Chanda B' in p.locator('.lic-req').inner_text() and '+260972222222' in p.locator('.lic-req').inner_text())
+        e = lic_env(pw, user='u2'); p = e.open('my-uploads.html'); p.wait_for_selector('.lic-req', timeout=8000); time.sleep(0.8)
+        check('producer sees the stems request with buyer contact', 'Chanda B' in p.locator('.lic-req', has_text='Mark delivered').inner_text() and '+260972222222' in p.locator('.lic-req', has_text='Mark delivered').inner_text())
         p.locator('.lic-req button', has_text='Mark delivered').click(); time.sleep(0.6)
-        check('mark delivered updates the request', 'Delivered' in p.locator('.lic-req').inner_text() and e.page.evaluate("() => window.__calls.includes('stem_requests:update')"))
+        check('mark delivered updates the request', 'Delivered' in p.locator('.lic-req', has_text='Chanda B').first.inner_text() and e.page.evaluate("() => window.__calls.includes('stem_requests:update')"))
+        check('producer sees the buyer complaint', 'stems link does not open' in ' '.join(p.locator('.lic-requests').all_inner_texts()) and 'Buyer complaints' in ' '.join(p.locator('.lic-requests').all_inner_texts()))
         check('exclusively sold beat is labelled', 'Sold exclusively' in p.locator('.card', has_text='Gone Exclusive').inner_text())
+        check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
+
+        # admin: Complaints tab lists it and can resolve it
+        e = lic_env(pw, user='u3'); p = e.open('admin.html'); p.wait_for_selector('.tab-btn[data-tab="complaints"]', timeout=8000)
+        p.locator('.tab-btn[data-tab="complaints"]').click(); p.wait_for_selector('#tab-complaints .card .resolve', timeout=6000)
+        ct = p.locator('#tab-complaints').inner_text()
+        check('admin sees the complaint with buyer, producer and message', 'Chanda B' in ct and 'Mwaka' in ct and 'stems link does not open' in ct and 'Night Drive Beat' in ct, ct[:200])
+        p.locator('#tab-complaints .resolve').click(); time.sleep(0.8)
+        check('admin can mark it resolved', p.evaluate("() => window.__calls.includes('purchase_complaints:update')"))
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 
         # ------------------------------------------------ F. verify page

@@ -30,3 +30,10 @@ The license wording and limits (stream caps etc.) live in `app/lib/licenses.js`.
 
 ## Not covered
 RLS policies on existing tables were not visible when this was written. Check that buyers cannot edit `status`, `amount` or `license_*` on their own `purchases` rows (see DEPLOY.md follow-ups).
+
+## Buyer complaints ("Report a problem")
+Run `supabase/complaints.sql` once (adds one table, `purchase_complaints`; safe to re-run). Until then the button stays hidden.
+- Under each beat purchase in **Account** the buyer gets **Report a problem**: a message with their name and phone number.
+- The **producer** sees it in **My Uploads → Buyer complaints**; **you** see it in **Admin → Complaints** (open ones first) and can **Mark resolved**.
+- Buyers can only file against beats they bought (max 10 a day); only admins can change a complaint's status.
+- The Stems & WAV panel now shows the producer's Google Drive link first; "Ask the producer" is the fallback if the link doesn't work.

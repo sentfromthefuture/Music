@@ -34,6 +34,7 @@ export const markup = `<div class="wrap">
       <button type="button" class="tab-btn" data-tab="live">Live Content</button>
       <button type="button" class="tab-btn" data-tab="taken-down">Taken Down</button>
       <button type="button" class="tab-btn" data-tab="users">Users</button>
+      <button type="button" class="tab-btn" data-tab="complaints">Complaints</button>
     </div>
 
     <div id="tab-review"></div>
@@ -43,6 +44,7 @@ export const markup = `<div class="wrap">
     <div id="tab-live" class="hidden"></div>
     <div id="tab-taken-down" class="hidden"></div>
     <div id="tab-users" class="hidden"></div>
+    <div id="tab-complaints" class="hidden"></div>
   </div>
 </div>`;
 
@@ -90,6 +92,7 @@ export async function mount({ supabase, timers: __t, document }) {
       if (btn.dataset.tab === 'live') loadLive();
       if (btn.dataset.tab === 'taken-down') loadTakenDown();
       if (btn.dataset.tab === 'users') loadUsers();
+      if (btn.dataset.tab === 'complaints') loadComplaints();
     });
   });
 
@@ -494,6 +497,49 @@ export async function mount({ supabase, timers: __t, document }) {
         if (error) { alert(error.message); e.target.disabled = false; return; }
         card.remove();
         loadStats();
+      });
+      container.appendChild(card);
+    }
+    applySearchFilter();
+  }
+
+  // --- Complaints (buyer "Report a problem" messages; needs supabase/complaints.sql) ---
+  async function loadComplaints() {
+    const container = document.getElementById('tab-complaints');
+    container.innerHTML = 'Loading…';
+    const { data: rows, error } = await supabase.from('purchase_complaints').select('*').order('created_at', { ascending: false });
+    container.innerHTML = '';
+    if (error) {
+      container.appendChild(cardShell('<p class="empty-state" style="margin:0;padding:0;">Complaints are not set up yet — run supabase/complaints.sql in the Supabase SQL editor.</p>'));
+      return;
+    }
+    if (!rows || rows.length === 0) {
+      container.appendChild(cardShell('<p class="empty-state" style="margin:0;padding:0;">No complaints.</p>'));
+      return;
+    }
+    const beatIds = [...new Set(rows.map(r => r.item_id))];
+    const producerIds = [...new Set(rows.map(r => r.producer_id))];
+    const [{ data: beats }, { data: producers }] = await Promise.all([
+      supabase.from('beats').select('id, title').in('id', beatIds),
+      supabase.from('profiles').select('id, display_name').in('id', producerIds),
+    ]);
+    const titleMap = new Map((beats || []).map(b => [String(b.id), b.title]));
+    const prodMap = new Map((producers || []).map(a => [a.id, a.display_name || 'Unnamed']));
+    for (const r of [...rows].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1))) {
+      const open = r.status !== 'resolved';
+      const card = cardShell(`
+        <p class="title">${escapeHtml(titleMap.get(String(r.item_id)) || 'Beat #' + r.item_id)} <span style="font-weight:400;color:${open ? '#b3261e' : 'var(--ink-muted)'};">(${open ? 'open' : 'resolved'})</span></p>
+        <p class="meta">Buyer: ${escapeHtml(r.buyer_name || 'Unknown')} · ${escapeHtml(r.buyer_contact || 'no contact')}</p>
+        <p class="meta">Producer: ${escapeHtml(prodMap.get(r.producer_id) || 'Unknown')} · ${escapeHtml(new Date(r.created_at).toLocaleString())}</p>
+        <p style="margin:8px 0;font-size:14px;white-space:pre-wrap;">${escapeHtml(r.message)}</p>
+        ${open ? '<div class="row-actions"><button class="approve resolve">Mark resolved</button></div>' : ''}
+      `);
+      const btn = card.querySelector('.resolve');
+      if (btn) btn.addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        const { error: upErr } = await supabase.from('purchase_complaints').update({ status: 'resolved' }).eq('id', r.id);
+        if (upErr) { alert(upErr.message); e.target.disabled = false; return; }
+        loadComplaints();
       });
       container.appendChild(card);
     }

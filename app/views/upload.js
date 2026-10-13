@@ -249,6 +249,7 @@ export async function mount({ supabase, timers: __t, document }) {
   // (preview will just be the full beat, downsampled).
   const BEAT_TAG_URL = 'https://tradvpjpxshngjemnoaq.supabase.co/storage/v1/object/public/public-previews/0.mp3';
   const BEAT_TAG_INTERVAL = 45; // seconds between tag repeats
+  const BEAT_TAG_OFFSET = 10; // seconds before the first tag plays
   const BEAT_TAG_GAIN = 0.55; // 0-1: how loud the tag is relative to the beat when it plays
   const BEAT_PREVIEW_SAMPLE_RATE = 22050; // downsample beat previews to keep upload size reasonable
   let previewStartSeconds = 0;
@@ -458,20 +459,21 @@ export async function mount({ supabase, timers: __t, document }) {
 
   // Loops `tagBuffer` on top of `buffer` every `intervalSeconds`, ducking the
   // underlying beat under each tag hit so it stays clearly audible.
-  function mixTagRepeating(buffer, tagBuffer, intervalSeconds, gain) {
+  function mixTagRepeating(buffer, tagBuffer, intervalSeconds, gain, offsetSeconds = 0) {
     const sampleRate = buffer.sampleRate;
     const numChannels = buffer.numberOfChannels;
     const AudioCtxForBuffer = window.AudioContext || window.webkitAudioContext;
     const tmpCtx = new AudioCtxForBuffer();
     const out = tmpCtx.createBuffer(numChannels, buffer.length, sampleRate);
     const intervalFrames = Math.floor(intervalSeconds * sampleRate);
+    const offsetFrames = Math.floor(offsetSeconds * sampleRate);
     const tagFrames = tagBuffer.length;
     for (let ch = 0; ch < numChannels; ch++) {
       const src = buffer.getChannelData(ch);
       const dst = out.getChannelData(ch);
       dst.set(src);
       const tagCh = tagBuffer.getChannelData(Math.min(ch, tagBuffer.numberOfChannels - 1));
-      for (let start = 0; start < dst.length; start += intervalFrames) {
+      for (let start = offsetFrames; start < dst.length; start += intervalFrames) {
         for (let i = 0; i < tagFrames && start + i < dst.length; i++) {
           dst[start + i] = Math.max(-1, Math.min(1, dst[start + i] * (1 - gain) + tagCh[i] * gain));
         }
@@ -489,7 +491,7 @@ export async function mount({ supabase, timers: __t, document }) {
     if (!BEAT_TAG_URL) return audioBufferToWav(shrunk);
     try {
       const tag = await loadTagBuffer(BEAT_PREVIEW_SAMPLE_RATE);
-      const tagged = mixTagRepeating(shrunk, tag, BEAT_TAG_INTERVAL, BEAT_TAG_GAIN);
+      const tagged = mixTagRepeating(shrunk, tag, BEAT_TAG_INTERVAL, BEAT_TAG_GAIN, BEAT_TAG_OFFSET);
       return audioBufferToWav(tagged);
     } catch (err) {
       console.error('Watermark tag failed, uploading un-tagged preview:', err);

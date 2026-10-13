@@ -248,7 +248,7 @@ export async function mount({ supabase, timers: __t, document }) {
   // lift a clean, usable copy. Leave BEAT_TAG_URL empty to skip tagging
   // (preview will just be the full beat, downsampled).
   const BEAT_TAG_URL = 'https://tradvpjpxshngjemnoaq.supabase.co/storage/v1/object/public/public-previews/0.mp3';
-  const BEAT_TAG_INTERVAL = 18; // seconds between tag repeats
+  const BEAT_TAG_INTERVAL = 45; // seconds between tag repeats
   const BEAT_TAG_GAIN = 0.55; // 0-1: how loud the tag is relative to the beat when it plays
   const BEAT_PREVIEW_SAMPLE_RATE = 22050; // downsample beat previews to keep upload size reasonable
   let previewStartSeconds = 0;

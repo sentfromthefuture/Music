@@ -39,7 +39,8 @@ const tables = {
   downloads: [{ track_id: 1, downloaded_at: iso(2) }, { track_id: 1, downloaded_at: iso(3) }, { track_id: 5, downloaded_at: iso(4) }],
   purchases: [{ item_id: 2, item_type: 'track', status: 'fulfilled', fulfilled_at: iso(5) },
     ...(LIC ? [{ id: 500, buyer_id: 'u4', item_id: 3, item_type: 'beat', status: 'fulfilled', amount: 120, license_tier: 'premium', license_id: 'ZL-TEST0001', buyer_name: 'Mulenga K', buyer_contact: '+260971111111', fulfilled_at: iso(1) }] : [])],
-  favorites: [], follows: [], withdrawals: [], purchase_complaints: LIC ? [{ id: 1, purchase_id: '999', item_id: '3', item_type: 'beat', buyer_id: 'u9', producer_id: 'u2', buyer_name: 'Chanda B', buyer_contact: '+260972222222', message: 'The stems link does not open', status: 'open', created_at: iso(1) }] : [],
+  favorites: [], follows: [], withdrawals: [], purchase_complaints: LIC ? [{ id: 1, purchase_id: '999', item_id: '3', item_type: 'beat', buyer_id: 'u9', producer_id: 'u2', buyer_name: 'Chanda B', buyer_contact: '+260972222222', message: 'The stems link does not open', status: 'open', created_at: iso(1) },
+    { id: 2, purchase_id: '500', item_id: '3', item_type: 'beat', buyer_id: 'u9', producer_id: 'u2', buyer_name: 'Mulenga K', buyer_contact: '+260971111111', message: 'Old report about the WAV', status: 'open', producer_reply: 'I re-uploaded the link', producer_fixed_at: iso(0), created_at: iso(3) }] : [],
   beat_extras: LIC ? [{ beat_id: '3', owner_id: 'u2', link: 'https://drive.example.com/stems-3' }] : [], stem_requests: LIC ? [{ id: 1, purchase_id: '999', beat_id: '3', buyer_id: 'u9', producer_id: 'u2', buyer_name: 'Chanda B', buyer_contact: '+260972222222', status: 'requested', created_at: iso(2) }] : [],
   artist_follow_counts: [{ artist_id: 'u1', follower_count: 7 }],
 };

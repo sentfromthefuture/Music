@@ -3,6 +3,7 @@
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { licensingEnabled } from '../lib/licenses.js';
 import { addLicenseControls } from '../ui/license-controls.js';
+import { complaintsEnabled, mountProducerComplaints } from '../ui/complaints.js';
 
 export const title = "My Account — Music Platform";
 export const css = 'css/views/account.css';
@@ -61,6 +62,8 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
       <a href="my-uploads.html" class="link-row">My Uploads <span class="arrow">→</span></a>
       <a href="balance.html" class="link-row">My Balance &amp; Withdrawals <span class="arrow">→</span></a>
     </div>
+
+    <div id="producer-complaints"></div>
 
     <div class="card hidden" id="become-artist-card">
       <p style="font-size:13px;color:var(--ink-muted);margin:0 0 10px;">Want to sell your own tracks or beats?</p>
@@ -124,6 +127,9 @@ export async function mount({ supabase, timers: __t, document }) {
 
     if (profile?.role === 'artist') {
       document.getElementById('artist-links').classList.remove('hidden');
+      complaintsEnabled(supabase).then((on) => {
+        if (on) mountProducerComplaints({ supabase, container: document.getElementById('producer-complaints'), userId: user.id });
+      }).catch(() => {});
     } else {
       const becomeCard = document.getElementById('become-artist-card');
       becomeCard.classList.remove('hidden');

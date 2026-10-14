@@ -37,3 +37,9 @@ Run `supabase/complaints.sql` once (adds one table, `purchase_complaints`; safe 
 - The **producer** sees it in **My Uploads → Buyer complaints**; **you** see it in **Admin → Complaints** (open ones first) and can **Mark resolved**.
 - Buyers can only file against beats they bought (max 10 a day); only admins can change a complaint's status.
 - The Stems & WAV panel now shows the producer's Google Drive link first; "Ask the producer" is the fallback if the link doesn't work.
+
+### Resolving complaints
+Run `supabase/complaints-update.sql` once after `complaints.sql` (a fresh install gets it from `complaints.sql`).
+- **Producer** (My Uploads and the Account page): sees each complaint, writes a short reply and taps **Mark as fixed**. The buyer reads the reply; admins see "Producer says fixed".
+- **Buyer**: can tap **Still not fixed? Reopen** once the producer says fixed or it is resolved.
+- **Admin**: only admins can **Mark resolved**. The rules are enforced in the database (a trigger), not just the screens.

@@ -88,18 +88,37 @@ export function addLicenseControls({ supabase, row, purchase, item }) {
       ta.style.cssText = 'width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--zs-border,#ddd);border-radius:10px;font:inherit;font-size:14px;margin-top:6px;';
       const send = el('button', 'lic-btn lic-btn--primary', 'Send to ZAMI & the producer'); send.type = 'button';
       const info = el('p', 'lic-msg', 'Your message, name and phone number go to ZAMI management and the producer so they can help you.');
-      const showPast = (rows) => past.replaceChildren(...rows.map((r) => el('p', 'lic-msg', `Sent ${new Date(r.created_at).toLocaleDateString()} — ${r.status === 'resolved' ? 'resolved' : 'open'}: ${r.message}`)));
-      try {
-        const { data } = await supabase.from('purchase_complaints').select('message, status, created_at').eq('purchase_id', String(purchase.id)).order('created_at', { ascending: false });
-        if (data && data.length) showPast(data);
-      } catch { /* optional */ }
+      const showPast = (rows) => past.replaceChildren(...rows.map((r) => {
+        const item2 = el('div');
+        const state = r.status === 'resolved' ? 'resolved' : (r.producer_fixed_at ? 'the producer says it is fixed' : 'open');
+        item2.append(el('p', 'lic-msg', `Sent ${new Date(r.created_at).toLocaleDateString()} — ${state}: ${r.message}`));
+        if (r.producer_reply) item2.append(el('p', 'lic-msg', `Producer: ${r.producer_reply}`));
+        if (r.status === 'resolved' || r.producer_fixed_at) {
+          const re = el('button', 'lic-btn', 'Still not fixed? Reopen'); re.type = 'button';
+          re.addEventListener('click', async () => {
+            re.disabled = true;
+            const { error } = await supabase.from('purchase_complaints').update({ status: 'open' }).eq('id', r.id);
+            if (error) { re.disabled = false; info.className = 'lic-msg is-error'; info.textContent = "Couldn't reopen it. Please try again."; return; }
+            await loadPast();
+          });
+          item2.append(re);
+        }
+        return item2;
+      }));
+      const loadPast = async () => {
+        try {
+          const { data } = await supabase.from('purchase_complaints').select('*').eq('purchase_id', String(purchase.id)).order('created_at', { ascending: false });
+          if (data && data.length) showPast(data);
+        } catch { /* optional */ }
+      };
+      await loadPast();
       send.addEventListener('click', async () => {
         const text = ta.value.trim();
         if (text.length < 5) { info.className = 'lic-msg is-error'; info.textContent = 'Please describe the problem (at least a few words).'; return; }
         send.disabled = true;
         const { error } = await supabase.from('purchase_complaints').insert({ purchase_id: String(purchase.id), item_id: String(purchase.item_id), item_type: 'beat', producer_id: item.owner_id, buyer_name: purchase.buyer_name || null, buyer_contact: purchase.buyer_contact || null, message: text });
         if (error) { send.disabled = false; info.className = 'lic-msg is-error'; info.textContent = "Couldn't send your message. Please try again."; return; }
-        past.prepend(el('p', 'lic-msg', `Sent just now — open: ${text}`));
+        await loadPast();
         ta.value = ''; send.disabled = false; info.className = 'lic-msg'; info.textContent = 'Sent. ZAMI management and the producer have been notified.';
       });
       cPanel.append(past, ta, send, info);

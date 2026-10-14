@@ -528,10 +528,12 @@ export async function mount({ supabase, timers: __t, document }) {
     for (const r of [...rows].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1))) {
       const open = r.status !== 'resolved';
       const card = cardShell(`
-        <p class="title">${escapeHtml(titleMap.get(String(r.item_id)) || 'Beat #' + r.item_id)} <span style="font-weight:400;color:${open ? '#b3261e' : 'var(--ink-muted)'};">(${open ? 'open' : 'resolved'})</span></p>
+        <p class="title">${escapeHtml(titleMap.get(String(r.item_id)) || 'Beat #' + r.item_id)} <span style="font-weight:400;color:${open ? '#b3261e' : 'var(--ink-muted)'};">(${!open ? 'resolved' : (r.producer_fixed_at ? 'producer says fixed' : 'open')})</span></p>
         <p class="meta">Buyer: ${escapeHtml(r.buyer_name || 'Unknown')} · ${escapeHtml(r.buyer_contact || 'no contact')}</p>
         <p class="meta">Producer: ${escapeHtml(prodMap.get(r.producer_id) || 'Unknown')} · ${escapeHtml(new Date(r.created_at).toLocaleString())}</p>
         <p style="margin:8px 0;font-size:14px;white-space:pre-wrap;">${escapeHtml(r.message)}</p>
+        ${r.producer_fixed_at ? `<p class="meta" style="color:#1a7f37;font-weight:600;">Producer marked fixed ${escapeHtml(new Date(r.producer_fixed_at).toLocaleDateString())}${r.producer_reply ? ': ' + escapeHtml(r.producer_reply) : ''}</p>` : (open ? '<p class="meta">Producer has not replied yet.</p>' : (r.producer_reply ? `<p class="meta">Producer reply: ${escapeHtml(r.producer_reply)}</p>` : ''))}
+        ${r.reopened_at && open ? `<p class="meta" style="color:#b3261e;font-weight:600;">Buyer reopened this on ${escapeHtml(new Date(r.reopened_at).toLocaleDateString())} — not fixed.</p>` : ''}
         ${open ? '<div class="row-actions"><button class="approve resolve">Mark resolved</button></div>' : ''}
       `);
       const btn = card.querySelector('.resolve');

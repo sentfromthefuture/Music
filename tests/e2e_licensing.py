@@ -90,6 +90,9 @@ def run():
         p.fill('.lic-actions ~ div textarea', 'The WAV folder is empty'); p.locator('button', has_text='Send to ZAMI').click(); time.sleep(0.8)
         comp = p.evaluate("() => (window.__ins || []).filter((i) => i.t === 'purchase_complaints').map((i) => i.payload)")
         check('complaint saved for the right purchase, producer and buyer', len(comp) == 1 and comp[0].get('purchase_id') == '500' and comp[0].get('producer_id') == 'u2' and comp[0].get('buyer_name') == 'Mulenga K' and comp[0].get('message') == 'The WAV folder is empty', str(comp))
+        check('buyer sees the producer reply and a Reopen button', 'I re-uploaded the link' in p.locator('.list-row').first.inner_text() and p.locator('button', has_text='Reopen').count() >= 1)
+        p.locator('button', has_text='Reopen').first.click(); time.sleep(0.8)
+        check('buyer can reopen a complaint marked fixed', p.evaluate("() => window.__calls.includes('purchase_complaints:update')"))
         check('buyer sees confirmation', 'notified' in p.locator('.lic-msg', has_text='notified').inner_text().lower())
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 
@@ -106,6 +109,12 @@ def run():
         ups = p.evaluate("() => (window.__ins || []).filter((i) => i.t === 'beat_extras:upsert').map((i) => i.payload)")
         check('producer can save the stems link from My Uploads', len(ups) == 1 and ups[0].get('link', '').endswith('NEWLINK') and ups[0].get('owner_id') == 'u2', str(ups))
         check('save confirms to the producer', p.locator('.card', has_text='Link saved').count() >= 1)
+        # producer replies + marks fixed
+        p.wait_for_selector('.lic-req textarea', timeout=6000)
+        check('producer sees how many complaints need a reply', 'need' in p.locator('.lic-requests h3', has_text='Buyer complaints').first.inner_text())
+        p.locator('.lic-req textarea').first.fill('I fixed the link and sent it on WhatsApp'); p.locator('button', has_text='Mark as fixed').first.click(); time.sleep(0.8)
+        upd = p.evaluate("() => window.__calls.filter((c) => c === 'purchase_complaints:update').length")
+        check('producer can mark a complaint fixed with a reply', upd == 1 and p.locator('.lic-req', has_text='Waiting for ZAMI').count() >= 1)
         check('producer sees the buyer complaint', 'stems link does not open' in ' '.join(p.locator('.lic-requests').all_inner_texts()) and 'Buyer complaints' in ' '.join(p.locator('.lic-requests').all_inner_texts()))
         check('exclusively sold beat is labelled', 'Sold exclusively' in p.locator('.card', has_text='Gone Exclusive').inner_text())
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
@@ -115,7 +124,7 @@ def run():
         p.locator('.tab-btn[data-tab="complaints"]').click(); p.wait_for_selector('#tab-complaints .card .resolve', timeout=6000)
         ct = p.locator('#tab-complaints').inner_text()
         check('admin sees the complaint with buyer, producer and message', 'Chanda B' in ct and 'Mwaka' in ct and 'stems link does not open' in ct and 'Night Drive Beat' in ct, ct[:200])
-        p.locator('#tab-complaints .resolve').click(); time.sleep(0.8)
+        p.locator('#tab-complaints .resolve').first.click(); time.sleep(0.8)
         check('admin can mark it resolved', p.evaluate("() => window.__calls.includes('purchase_complaints:update')"))
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 

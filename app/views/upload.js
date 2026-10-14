@@ -638,7 +638,10 @@ export async function mount({ supabase, timers: __t, document }) {
 
       if (useTiers && extrasLink) {
         // Private link for Premium/Exclusive buyers (RLS-protected table); a failure here must not block the upload.
-        try { await supabase.from('beat_extras').insert({ beat_id: String(insertedRow.id), link: extrasLink }); } catch (e) { console.error(e); }
+        try {
+          const { error: exErr } = await supabase.from('beat_extras').insert({ beat_id: String(insertedRow.id), link: extrasLink });
+          if (exErr) { console.error(exErr); setStatus("Beat uploaded, but the stems link couldn't be saved. Add it later in My Uploads.", true); }
+        } catch (e) { console.error(e); }
       }
 
       // 5. Show the pending-payment card

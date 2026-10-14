@@ -52,3 +52,6 @@ create policy "complaints admin read" on public.purchase_complaints for select u
 -- only admins can change a complaint (mark resolved); buyers and producers cannot edit or delete
 drop policy if exists "complaints admin update" on public.purchase_complaints;
 create policy "complaints admin update" on public.purchase_complaints for update using (public.zami_is_admin()) with check (public.zami_is_admin());
+
+-- make the API pick up the new table right away
+notify pgrst, 'reload schema';

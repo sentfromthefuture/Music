@@ -51,6 +51,7 @@ class Q {
   constructor(table) { this.t = table; this.f = []; this.ord = null; this.rng = null; this.lim = null; this.op = 'select'; this.payload = null; this.sg = false; this.sel = false; this.cols = ''; }
   select(c) { this.cols = c || ''; if (this.op !== 'select') this.sel = true; return this; }
   insert(p) { this.op = 'insert'; this.payload = p; return this; }
+  upsert(p, o) { this.op = 'upsert'; this.payload = p; this.conflict = (o && o.onConflict) || 'id'; return this; }
   update(p) { this.op = 'update'; this.payload = p; return this; }
   delete() { this.op = 'delete'; return this; }
   eq(c, v) { this.f.push((r) => cmp(r[c], v)); return this; }
@@ -81,6 +82,8 @@ class Q {
       });
       (window.__ins = window.__ins || []).push({ t: this.t, payload: this.payload });
       rows.push(...ins); out = this.sel ? (this.sg ? ins[0] : ins) : null; }
+    else if (this.op === 'upsert') { [].concat(this.payload).forEach((r) => { const ex = rows.find((x) => cmp(x[this.conflict], r[this.conflict])); if (ex) Object.assign(ex, r); else rows.push({ ...r }); });
+      (window.__ins = window.__ins || []).push({ t: this.t + ':upsert', payload: this.payload }); out = null; }
     else if (this.op === 'delete') { const keep = rows.filter((r) => !this.f.every((fn) => fn(r))); tables[this.t] = keep; out = null; }
     else if (this.op === 'update') { rows.filter((r) => this.f.every((fn) => fn(r))).forEach((r) => Object.assign(r, this.payload)); out = null; }
     else {

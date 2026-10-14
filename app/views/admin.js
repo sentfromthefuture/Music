@@ -510,7 +510,7 @@ export async function mount({ supabase, timers: __t, document }) {
     const { data: rows, error } = await supabase.from('purchase_complaints').select('*').order('created_at', { ascending: false });
     container.innerHTML = '';
     if (error) {
-      container.appendChild(cardShell('<p class="empty-state" style="margin:0;padding:0;">Complaints are not set up yet — run supabase/complaints.sql in the Supabase SQL editor.</p>'));
+      container.appendChild(cardShell(`<p class="empty-state" style="margin:0;padding:0;">Could not load complaints: ${escapeHtml(error.message || 'unknown error')}. If the table is missing, run supabase/complaints.sql in the Supabase SQL editor.</p>`));
       return;
     }
     if (!rows || rows.length === 0) {

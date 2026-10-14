@@ -40,13 +40,16 @@ export function addLicenseControls({ supabase, row, purchase, item }) {
       panel.hidden = !panel.hidden;
       if (panel.hidden || loaded) return;
       loaded = true; panel.replaceChildren(el('p', 'lic-msg', 'Loading…'));
-      const [{ data: ex }, { data: req }] = await Promise.all([
+      const [{ data: ex, error: exErr }, { data: req }] = await Promise.all([
         supabase.from('beat_extras').select('link').eq('beat_id', String(purchase.item_id)).maybeSingle(),
         supabase.from('stem_requests').select('status').eq('purchase_id', String(purchase.id)).maybeSingle(),
       ]);
       panel.replaceChildren();
       const hasLink = !!(ex && /^https?:\/\//i.test(ex.link || ''));
-      if (hasLink) {
+      if (exErr) {
+        console.error('beat_extras', exErr); loaded = false;
+        panel.append(el('p', 'lic-msg is-error', `Couldn't load the producer's link (${exErr.message || 'error'}). Close and reopen this panel to try again.`));
+      } else if (hasLink) {
         const a = el('a', 'lic-btn lic-btn--primary', 'Open your WAV / stems folder'); a.href = ex.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
         panel.append(a, el('p', 'lic-msg', 'This is the Google Drive link the producer uploaded for you. Please keep it private.'));
       } else {

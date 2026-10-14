@@ -184,7 +184,36 @@ export async function mount({ supabase, timers: __t, document }) {
       cardEl.innerHTML = cardHtml(item);
       wireCardActions(cardEl, item);
       list.appendChild(cardEl);
+      if (item.itemType === 'beat') licensingEnabled().then((on) => { if (on) mountStemsLinkEditor(cardEl, item); }).catch(() => {});
     }
+  }
+
+  // Producer's private Stems / WAV link (Google Drive) for Premium & Exclusive buyers. Saved in beat_extras.
+  async function mountStemsLinkEditor(cardEl, item) {
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#e5e5e5);';
+    const label = document.createElement('p'); label.className = 'meta';
+    label.style.cssText = 'margin:0 0 6px;font-size:12px;color:var(--ink-muted);';
+    label.textContent = 'Stems / WAV link (Google Drive) — only Premium & Exclusive buyers can open it';
+    const input = document.createElement('input'); input.type = 'url'; input.placeholder = 'https://drive.google.com/…';
+    input.style.cssText = 'width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#ddd);border-radius:10px;font:inherit;font-size:14px;';
+    const save = document.createElement('button'); save.type = 'button'; save.textContent = 'Save link'; save.className = 'primary';
+    save.style.cssText = 'margin-top:8px;';
+    const status = document.createElement('p'); status.style.cssText = 'margin:6px 0 0;font-size:12px;color:var(--ink-muted);';
+    box.append(label, input, save, status); cardEl.appendChild(box);
+    const key = String(item.id);
+    const { data: cur, error: curErr } = await supabase.from('beat_extras').select('link').eq('beat_id', key).maybeSingle();
+    if (curErr) { status.textContent = `Couldn't load the saved link (${curErr.message}).`; }
+    else if (cur && cur.link) { input.value = cur.link; status.textContent = 'Link saved — buyers of Premium & Exclusive can open it.'; }
+    else { status.textContent = 'No link saved yet — buyers have nothing to download until you add one.'; }
+    save.addEventListener('click', async () => {
+      const link = input.value.trim();
+      if (!/^https?:\/\//i.test(link)) { status.textContent = 'Paste a full link starting with https://'; return; }
+      save.disabled = true;
+      const { error } = await supabase.from('beat_extras').upsert({ beat_id: key, owner_id: currentUserId, link, updated_at: new Date().toISOString() }, { onConflict: 'beat_id' });
+      save.disabled = false;
+      status.textContent = error ? `Couldn't save the link: ${error.message}` : 'Link saved ✓';
+    });
   }
 
   function updateItemInPlace(itemType, newRow) {

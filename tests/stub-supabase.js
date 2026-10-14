@@ -10,7 +10,7 @@ const LIC = (() => { try { return localStorage.getItem('stub-licensing') === '1'
 
 const profiles = [
   { id: 'u1', display_name: 'Chanda Beats', bio: 'Lusaka producer.', role: 'artist', is_admin: false },
-  { id: 'u2', display_name: 'Mwaka', bio: '', role: 'artist', is_admin: false },
+  { id: 'u2', display_name: 'Mwaka', bio: '', role: 'artist', is_admin: false, momo_number: '0977329815' },
   { id: 'u3', display_name: 'Admin', role: 'listener', is_admin: true },
   { id: 'u4', display_name: 'Listener', role: 'listener', is_admin: false },
 ];

@@ -521,16 +521,19 @@ export async function mount({ supabase, timers: __t, document }) {
     const producerIds = [...new Set(rows.map(r => r.producer_id))];
     const [{ data: beats }, { data: producers }] = await Promise.all([
       supabase.from('beats').select('id, title').in('id', beatIds),
-      supabase.from('profiles').select('id, display_name').in('id', producerIds),
+      supabase.from('profiles').select('id, display_name, momo_number').in('id', producerIds),
     ]);
     const titleMap = new Map((beats || []).map(b => [String(b.id), b.title]));
     const prodMap = new Map((producers || []).map(a => [a.id, a.display_name || 'Unnamed']));
+    const prodPhone = new Map((producers || []).map(a => [a.id, a.momo_number || '']));
+    const waLink = (num) => { const d = String(num).replace(/\D/g, ''); return d ? 'https://wa.me/' + (d.startsWith('0') ? '260' + d.slice(1) : d) : ''; };
     for (const r of [...rows].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1))) {
       const open = r.status !== 'resolved';
       const card = cardShell(`
         <p class="title">${escapeHtml(titleMap.get(String(r.item_id)) || 'Beat #' + r.item_id)} <span style="font-weight:400;color:${open ? '#b3261e' : 'var(--ink-muted)'};">(${!open ? 'resolved' : (r.producer_fixed_at ? 'producer says fixed' : 'open')})</span></p>
         <p class="meta">Buyer: ${escapeHtml(r.buyer_name || 'Unknown')} · ${escapeHtml(r.buyer_contact || 'no contact')}</p>
-        <p class="meta">Producer: ${escapeHtml(prodMap.get(r.producer_id) || 'Unknown')} · ${escapeHtml(new Date(r.created_at).toLocaleString())}</p>
+        <p class="meta">Producer: ${escapeHtml(prodMap.get(r.producer_id) || 'Unknown')} · ${prodPhone.get(r.producer_id) ? `<a href="tel:${escapeHtml(prodPhone.get(r.producer_id))}">${escapeHtml(prodPhone.get(r.producer_id))}</a> · <a href="${escapeHtml(waLink(prodPhone.get(r.producer_id)))}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : 'no number saved'}</p>
+        <p class="meta">Filed ${escapeHtml(new Date(r.created_at).toLocaleString())}</p>
         <p style="margin:8px 0;font-size:14px;white-space:pre-wrap;">${escapeHtml(r.message)}</p>
         ${r.producer_fixed_at ? `<p class="meta" style="color:#1a7f37;font-weight:600;">Producer marked fixed ${escapeHtml(new Date(r.producer_fixed_at).toLocaleDateString())}${r.producer_reply ? ': ' + escapeHtml(r.producer_reply) : ''}</p>` : (open ? '<p class="meta">Producer has not replied yet.</p>' : (r.producer_reply ? `<p class="meta">Producer reply: ${escapeHtml(r.producer_reply)}</p>` : ''))}
         ${r.reopened_at && open ? `<p class="meta" style="color:#b3261e;font-weight:600;">Buyer reopened this on ${escapeHtml(new Date(r.reopened_at).toLocaleDateString())} — not fixed.</p>` : ''}

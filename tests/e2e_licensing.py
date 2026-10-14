@@ -124,6 +124,7 @@ def run():
         p.locator('.tab-btn[data-tab="complaints"]').click(); p.wait_for_selector('#tab-complaints .card .resolve', timeout=6000)
         ct = p.locator('#tab-complaints').inner_text()
         check('admin sees the complaint with buyer, producer and message', 'Chanda B' in ct and 'Mwaka' in ct and 'stems link does not open' in ct and 'Night Drive Beat' in ct, ct[:200])
+        check('admin sees the producer number with call + WhatsApp links', '0977329815' in ct and p.locator('#tab-complaints a[href="tel:0977329815"]').count() >= 1 and p.locator('#tab-complaints a[href="https://wa.me/260977329815"]').count() >= 1)
         p.locator('#tab-complaints .resolve').first.click(); time.sleep(0.8)
         check('admin can mark it resolved', p.evaluate("() => window.__calls.includes('purchase_complaints:update')"))
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()

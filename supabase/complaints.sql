@@ -53,5 +53,7 @@ create policy "complaints admin read" on public.purchase_complaints for select u
 drop policy if exists "complaints admin update" on public.purchase_complaints;
 create policy "complaints admin update" on public.purchase_complaints for update using (public.zami_is_admin()) with check (public.zami_is_admin());
 
+grant select, insert, update on public.purchase_complaints to authenticated;
+
 -- make the API pick up the new table right away
 notify pgrst, 'reload schema';

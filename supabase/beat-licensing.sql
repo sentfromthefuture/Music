@@ -150,3 +150,7 @@ language sql stable security definer set search_path = public as $$
   where p.license_id = upper(trim(p_license_id)) and p.status = 'fulfilled'
 $$;
 grant execute on function public.verify_license(text) to anon, authenticated;
+
+-- API access for the new tables (RLS above still limits rows)
+grant select, insert, update, delete on public.beat_extras to authenticated;
+grant select, insert, update on public.stem_requests to authenticated;

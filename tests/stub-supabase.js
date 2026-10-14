@@ -86,7 +86,7 @@ class Q {
     else if (this.op === 'upsert') { [].concat(this.payload).forEach((r) => { const ex = rows.find((x) => cmp(x[this.conflict], r[this.conflict])); if (ex) Object.assign(ex, r); else rows.push({ ...r }); });
       (window.__ins = window.__ins || []).push({ t: this.t + ':upsert', payload: this.payload }); out = null; }
     else if (this.op === 'delete') { const keep = rows.filter((r) => !this.f.every((fn) => fn(r))); tables[this.t] = keep; out = null; }
-    else if (this.op === 'update') { rows.filter((r) => this.f.every((fn) => fn(r))).forEach((r) => Object.assign(r, this.payload)); out = null; }
+    else if (this.op === 'update') { const hit = rows.filter((r) => this.f.every((fn) => fn(r))); hit.forEach((r) => Object.assign(r, this.payload)); out = this.sel ? hit : null; }
     else {
       out = rows.filter((r) => this.f.every((fn) => fn(r)));
       if (this.ord) { const [c, asc] = this.ord; out = [...out].sort((a, b) => (a[c] > b[c] ? 1 : a[c] < b[c] ? -1 : 0) * (asc ? 1 : -1)); }
@@ -109,6 +109,7 @@ export function createClient() {
         const b = p && tables.beats.find((x) => cmp(x.id, p.item_id)); const pr = b && tables.profiles.find((x) => x.id === b.owner_id);
         return Promise.resolve({ data: p ? [{ license_id: p.license_id, tier: p.license_tier, buyer_name: p.buyer_name, beat_title: b.title, producer_name: pr && pr.display_name, issued_at: p.fulfilled_at, extras: !!(b.license_tiers && b.license_tiers[p.license_tier] && b.license_tiers[p.license_tier].extras) }] : [], error: null });
       }
+      if (name === 'reopen_complaint') { const c = tables.purchase_complaints.find((x) => cmp(x.id, args.p_id)); if (c) { c.status = 'open'; c.producer_fixed_at = null; c.reopened_at = new Date().toISOString(); } return Promise.resolve({ data: null, error: c ? null : { message: 'Complaint not found' } }); }
       return Promise.resolve({ data: null, error: null });
     },
     auth: {

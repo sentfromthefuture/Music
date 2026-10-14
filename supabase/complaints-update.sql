@@ -9,6 +9,7 @@ create or replace function public.zami_complaints_guard() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then return new; end if;          -- SQL editor / server: trusted
+  if current_setting('zami.reopen', true) = '1' then return new; end if;  -- set only inside reopen_complaint()
   if (new.message, new.purchase_id, new.item_id, new.item_type, new.buyer_id, new.producer_id, new.buyer_name, new.buyer_contact, new.created_at)
      is distinct from
      (old.message, old.purchase_id, old.item_id, old.item_type, old.buyer_id, old.producer_id, old.buyer_name, old.buyer_contact, old.created_at) then
@@ -41,6 +42,21 @@ begin
   end if;
   raise exception 'Not allowed';
 end $$;
+
+-- Buyer "Reopen": a dedicated function so it behaves the same for every account (even an admin or
+-- producer who is also the buyer). Only the buyer of that complaint can call it successfully.
+create or replace function public.reopen_complaint(p_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare r public.purchase_complaints;
+begin
+  select * into r from public.purchase_complaints where id = p_id;
+  if not found or r.buyer_id is distinct from auth.uid() then raise exception 'Complaint not found'; end if;
+  if not (r.status = 'resolved' or r.producer_fixed_at is not null) then raise exception 'Nothing to reopen'; end if;
+  perform set_config('zami.reopen', '1', true);
+  update public.purchase_complaints set status = 'open', producer_fixed_at = null, reopened_at = now() where id = p_id;
+  perform set_config('zami.reopen', '', true);
+end $$;
+grant execute on function public.reopen_complaint(bigint) to authenticated;
 
 drop trigger if exists zami_complaints_guard on public.purchase_complaints;
 create trigger zami_complaints_guard before update on public.purchase_complaints

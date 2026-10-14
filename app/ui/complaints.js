@@ -48,8 +48,8 @@ export async function mountProducerComplaints({ supabase, container, before, use
           const text = ta.value.trim();
           if (text.length < 5) { msg.hidden = false; msg.className = 'lic-msg is-error'; msg.textContent = 'Please write a short reply for the buyer.'; return; }
           btn.disabled = true;
-          const { error: upErr } = await supabase.from('purchase_complaints').update({ producer_reply: text, producer_fixed_at: new Date().toISOString() }).eq('id', r.id);
-          if (upErr) { btn.disabled = false; msg.hidden = false; msg.className = 'lic-msg is-error'; msg.textContent = `Couldn't save: ${upErr.message}`; return; }
+          const { data: done, error: upErr } = await supabase.from('purchase_complaints').update({ producer_reply: text, producer_fixed_at: new Date().toISOString() }).eq('id', r.id).select('id');
+          if (upErr || !done || !done.length) { btn.disabled = false; msg.hidden = false; msg.className = 'lic-msg is-error'; msg.textContent = `Couldn't save${upErr ? ': ' + upErr.message : ' — nothing was changed. Please try again.'}`; return; }
           r.producer_reply = text; r.producer_fixed_at = new Date().toISOString(); render();
         });
         row.append(ta, btn, msg);

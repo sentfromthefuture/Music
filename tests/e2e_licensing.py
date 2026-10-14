@@ -90,10 +90,10 @@ def run():
         p.fill('.lic-actions ~ div textarea', 'The WAV folder is empty'); p.locator('button', has_text='Send to ZAMI').click(); time.sleep(0.8)
         comp = p.evaluate("() => (window.__ins || []).filter((i) => i.t === 'purchase_complaints').map((i) => i.payload)")
         check('complaint saved for the right purchase, producer and buyer', len(comp) == 1 and comp[0].get('purchase_id') == '500' and comp[0].get('producer_id') == 'u2' and comp[0].get('buyer_name') == 'Mulenga K' and comp[0].get('message') == 'The WAV folder is empty', str(comp))
+        check('buyer sees confirmation', 'notified' in p.locator('.lic-msg', has_text='notified').inner_text().lower())
         check('buyer sees the producer reply and a Reopen button', 'I re-uploaded the link' in p.locator('.list-row').first.inner_text() and p.locator('button', has_text='Reopen').count() >= 1)
         p.locator('button', has_text='Reopen').first.click(); time.sleep(0.8)
-        check('buyer can reopen a complaint marked fixed', p.evaluate("() => window.__calls.includes('purchase_complaints:update')"))
-        check('buyer sees confirmation', 'notified' in p.locator('.lic-msg', has_text='notified').inner_text().lower())
+        check('buyer can reopen a complaint marked fixed (via reopen_complaint)', p.evaluate("() => window.__rpc.some((c) => c[0] === 'reopen_complaint')") and p.locator('button', has_text='Reopen').count() == 0 and 'Reopened' in p.locator('.lic-msg', has_text='Reopened').first.inner_text())
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 
         # ------------------------------------------------ E. producer: requests inbox + exclusive badge

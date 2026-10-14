@@ -97,8 +97,9 @@ export function addLicenseControls({ supabase, row, purchase, item }) {
           const re = el('button', 'lic-btn', 'Still not fixed? Reopen'); re.type = 'button';
           re.addEventListener('click', async () => {
             re.disabled = true;
-            const { error } = await supabase.from('purchase_complaints').update({ status: 'open' }).eq('id', r.id);
-            if (error) { re.disabled = false; info.className = 'lic-msg is-error'; info.textContent = "Couldn't reopen it. Please try again."; return; }
+            const { error } = await supabase.rpc('reopen_complaint', { p_id: r.id });
+            if (error) { re.disabled = false; info.className = 'lic-msg is-error'; info.textContent = `Couldn't reopen it: ${error.message || 'please try again'}`; return; }
+            info.className = 'lic-msg'; info.textContent = 'Reopened. The producer will see that it still needs fixing.';
             await loadPast();
           });
           item2.append(re);

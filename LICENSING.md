@@ -43,3 +43,6 @@ Run `supabase/complaints-update.sql` once after `complaints.sql` (a fresh instal
 - **Producer** (My Uploads and the Account page): sees each complaint, writes a short reply and taps **Mark as fixed**. The buyer reads the reply; admins see "Producer says fixed".
 - **Buyer**: can tap **Still not fixed? Reopen** once the producer says fixed or it is resolved.
 - **Admin**: only admins can **Mark resolved**. The rules are enforced in the database (a trigger), not just the screens.
+
+### Producer contact numbers (admin only)
+Run `supabase/admin-phones.sql` once. Admin → Complaints then shows each producer's verified **login number** (with call + WhatsApp links), falling back to their payout MoMo number if the lookup isn't set up. The numbers stay in Supabase's auth system and are only returned to admins by a function; they are never copied into public tables.

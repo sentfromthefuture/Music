@@ -109,6 +109,7 @@ export function createClient() {
         const b = p && tables.beats.find((x) => cmp(x.id, p.item_id)); const pr = b && tables.profiles.find((x) => x.id === b.owner_id);
         return Promise.resolve({ data: p ? [{ license_id: p.license_id, tier: p.license_tier, buyer_name: p.buyer_name, beat_title: b.title, producer_name: pr && pr.display_name, issued_at: p.fulfilled_at, extras: !!(b.license_tiers && b.license_tiers[p.license_tier] && b.license_tiers[p.license_tier].extras) }] : [], error: null });
       }
+      if (name === 'admin_user_phones') return Promise.resolve({ data: curUser() && curUser().id === 'u3' ? [{ id: 'u2', phone: '260977111222' }] : null, error: curUser() && curUser().id === 'u3' ? null : { message: 'Not allowed' } });
       if (name === 'reopen_complaint') { const c = tables.purchase_complaints.find((x) => cmp(x.id, args.p_id)); if (c) { c.status = 'open'; c.producer_fixed_at = null; c.reopened_at = new Date().toISOString(); } return Promise.resolve({ data: null, error: c ? null : { message: 'Complaint not found' } }); }
       return Promise.resolve({ data: null, error: null });
     },

@@ -38,6 +38,8 @@ if (SONG) {
   tracks.find((t) => t.id === 1).license_tiers = { creator: { price: 50, months: 12, territory: 'zm' }, business: { price: 300, months: 36, territory: 'africa' }, live: { price: 120, months: 0, territory: 'world' } };
   tracks.find((t) => t.id === 2).license_tiers = { film: { price: 500, months: 0, territory: 'world' }, broadcast: { price: 800, months: 60, territory: 'zm' } };
 }
+// Rejections mode simulates a database where supabase/upload-rejections.sql HAS been run (flag: localStorage stub-rejections=1).
+const REJ = (() => { try { return localStorage.getItem('stub-rejections') === '1'; } catch { return false; } })();
 const feedCols = (r, type) => ({ item_type: type, id: r.id, owner_id: r.owner_id, title: r.title, genre: r.genre, cover_url: r.cover_url, price: r.price, is_free: type === 'track' ? r.is_free : false, play_count: r.play_count, download_count: r.download_count || 0, purchase_count: r.purchase_count, created_at: r.created_at });
 const tables = {
   profiles, tracks, beats,
@@ -59,6 +61,8 @@ if (SONG) {
     { id: 603, buyer_id: 'u9', item_id: 1, item_type: 'track', status: 'requested', amount: 300, song_license_tier: 'business', license_id: 'SL-TEST0004', buyer_name: 'New Buyer', buyer_contact: '+260972222222', reference_number: 'ORD-AAAA', transaction_sms: 'Confirmed K300', license_terms: terms('business', 300, 36, 'africa', 'Free Anthem') },
     { id: 604, buyer_id: 'u9', item_id: 2, item_type: 'track', status: 'requested', amount: 800, song_license_tier: 'broadcast', license_id: 'SL-TEST0005', buyer_name: 'Radio Z', buyer_contact: '+260973333333', reference_number: 'ORD-BBBB', transaction_sms: 'Confirmed K800', license_terms: terms('broadcast', 800, 60, 'zm', 'Paid Groove') });
 }
+tables.upload_rejections = REJ ? [{ id: 1, item_type: 'track', item_id: '6', owner_id: 'u2', title: 'No Preview Yet', genre: 'Other', reference_number: 'TRK-ZZZZ', transaction_sms: 'Confirmed K25 sent', rejected_at: iso(30) }] : null;
+tables.purchases.push({ id: 605, buyer_id: 'u9', item_id: 2, item_type: 'track', status: 'rejected', amount: 20, buyer_contact: '+260974444444', reference_number: 'ORD-REJ1', transaction_sms: 'fake sms', created_at: iso(10) });
 window.__calls = window.__calls || []; window.__rpc = window.__rpc || [];
 window.__tables = tables;
 
@@ -87,6 +91,7 @@ class Q {
     window.__calls.push(`${this.t}:${this.op}`);
     if (this.op === 'select' && this.t === 'beats' && !LIC && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column beats.license_tiers does not exist' } }).then(res, rej);
     if (this.op === 'select' && this.t === 'tracks' && !SONG && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column tracks.license_tiers does not exist' } }).then(res, rej);
+    if (this.t === 'upload_rejections' && !REJ) return Promise.resolve({ data: null, error: { code: '42P01', message: 'relation "public.upload_rejections" does not exist' } }).then(res, rej);
     const rows = tables[this.t] || (tables[this.t] = []);
     let out; let error = null;
     if (this.op === 'insert') { const ins = [].concat(this.payload).map((r, i) => {

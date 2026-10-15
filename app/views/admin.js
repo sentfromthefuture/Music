@@ -3,6 +3,7 @@
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { tierLabel } from '../lib/licenses.js';
 import { songLicenseLabel, durationLabel, territoryLabel } from '../lib/song-licenses.js';
+import { createSalesView } from '../ui/admin-sales.js';
 
 export const title = "Admin — Music Platform";
 export const css = 'css/views/admin.css';
@@ -30,6 +31,7 @@ export const markup = `<div class="wrap">
     <div class="tabs">
       <button type="button" class="tab-btn active" data-tab="review">Pending Review</button>
       <button type="button" class="tab-btn" data-tab="purchases">Purchases</button>
+      <button type="button" class="tab-btn" data-tab="sales">Purchased Items</button>
       <button type="button" class="tab-btn" data-tab="withdrawals">Withdrawals</button>
       <button type="button" class="tab-btn" data-tab="withdrawal-history">Withdrawal History</button>
       <button type="button" class="tab-btn" data-tab="live">Live Content</button>
@@ -40,6 +42,7 @@ export const markup = `<div class="wrap">
 
     <div id="tab-review"></div>
     <div id="tab-purchases" class="hidden"></div>
+    <div id="tab-sales" class="hidden"></div>
     <div id="tab-withdrawals" class="hidden"></div>
     <div id="tab-withdrawal-history" class="hidden"></div>
     <div id="tab-live" class="hidden"></div>
@@ -53,6 +56,7 @@ export async function mount({ supabase, timers: __t, document }) {
   const gate = document.getElementById('gate');
   const adminArea = document.getElementById('admin-area');
   const logoutBtn = document.getElementById('logout-btn');
+  let salesView = null; // the "Purchased Items" tab (app/ui/admin-sales.js), created the first time it is opened
 
   // --- Access check ---
   (async () => {
@@ -88,6 +92,7 @@ export async function mount({ supabase, timers: __t, document }) {
       target.classList.remove('hidden');
       if (btn.dataset.tab === 'review') loadReview();
       if (btn.dataset.tab === 'purchases') loadPurchases();
+      if (btn.dataset.tab === 'sales') loadSales();
       if (btn.dataset.tab === 'withdrawals') loadWithdrawals();
       if (btn.dataset.tab === 'withdrawal-history') loadWithdrawalHistory();
       if (btn.dataset.tab === 'live') loadLive();
@@ -110,6 +115,7 @@ export async function mount({ supabase, timers: __t, document }) {
     const term = searchInput.value.trim().toLowerCase();
     const activeTab = document.querySelector('.tab-btn.active');
     if (!activeTab) return;
+    if (activeTab.dataset.tab === 'sales') { if (salesView) salesView.setSearch(searchInput.value); return; } // the sales list does its own filtering
     const container = document.getElementById(`tab-${activeTab.dataset.tab}`);
     if (!container) return;
     container.querySelectorAll('.card').forEach(card => {
@@ -277,12 +283,22 @@ export async function mount({ supabase, timers: __t, document }) {
         const table = item.itemType === 'beat' ? 'beats' : 'tracks';
         const { error } = await supabase.from(table).update({ status: 'pending_payment', transaction_sms: null }).eq('id', item.id);
         if (error) { alert(error.message); e.target.disabled = false; return; }
+        // Remember the rejection for Purchased Items -> Rejected uploads (supabase/upload-rejections.sql).
+        // Best effort: rejecting works exactly as before even if that SQL has not been run.
+        try { await supabase.from('upload_rejections').insert({ item_type: item.itemType, item_id: String(item.id), owner_id: item.owner_id, title: item.title, genre: item.genre || null, reference_number: item.reference_number || null, transaction_sms: item.transaction_sms || null }); } catch { /* optional */ }
         card.remove();
         loadStats();
       });
       container.appendChild(card);
     }
     applySearchFilter();
+  }
+
+  // --- Purchased Items: every approved sale (and rejected purchases / uploads), who bought, from whom, when ---
+  function loadSales() {
+    if (!salesView) salesView = createSalesView({ supabase, container: document.getElementById('tab-sales'), escapeHtml, artistShare: ARTIST_SHARE });
+    salesView.setSearch(searchInput.value);
+    salesView.open();
   }
 
   // --- Tab 2: Pending Purchases ---

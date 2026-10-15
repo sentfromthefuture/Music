@@ -2,6 +2,8 @@
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { licensingEnabled } from '../lib/licenses.js';
+import { songLicensingEnabled } from '../lib/song-licenses.js';
+import { createSongLicenseForm } from '../ui/song-license-form.js';
 import { mountStemRequests } from '../ui/stem-requests.js';
 import { complaintsEnabled, mountProducerComplaints } from '../ui/complaints.js';
 
@@ -185,7 +187,46 @@ export async function mount({ supabase, timers: __t, document }) {
       wireCardActions(cardEl, item);
       list.appendChild(cardEl);
       if (item.itemType === 'beat') licensingEnabled().then((on) => { if (on) mountStemsLinkEditor(cardEl, item); }).catch(() => {});
+      if (item.itemType === 'track') songLicensingEnabled().then((on) => { if (on) mountSongLicenseEditor(cardEl, item); }).catch(() => {});
     }
+  }
+
+  // Optional licenses for a song the artist already uploaded: add, change or stop offering them.
+  // Licenses that were already sold keep the terms they were bought with.
+  function mountSongLicenseEditor(cardEl, item) {
+    if (item.status === 'removed') return;
+    const det = document.createElement('details'); det.className = 'slic-card';
+    const sum = document.createElement('summary');
+    const label = () => { const n = item.license_tiers ? Object.keys(item.license_tiers).length : 0; return n ? `Song licenses (${n} offered)` : 'Offer licenses for this song'; };
+    sum.textContent = label();
+    const body = document.createElement('div');
+    const msg = document.createElement('p'); msg.className = 'lic-msg';
+    const actions = document.createElement('div'); actions.className = 'lic-actions';
+    const save = document.createElement('button'); save.type = 'button'; save.className = 'lic-btn lic-btn--primary'; save.textContent = 'Save licenses';
+    const stop = document.createElement('button'); stop.type = 'button'; stop.className = 'lic-btn'; stop.textContent = 'Stop offering licenses';
+    actions.append(save); if (item.license_tiers) actions.append(stop);
+    const note = document.createElement('p'); note.className = 'lic-note';
+    note.textContent = 'Licenses already sold stay valid for their full term, even if you change or stop offering them. Your regular download is not affected.';
+    body.append(actions, msg, note); det.append(sum, body);
+    let form = null;
+    det.addEventListener('toggle', () => {
+      if (det.open && !form) { form = createSongLicenseForm({ initial: item.license_tiers, idPrefix: `mu${item.id}` }); body.prepend(form.el); }
+    });
+    const run = async (patch, doneText) => {
+      save.disabled = stop.disabled = true; msg.className = 'lic-msg'; msg.textContent = 'Saving\u2026';
+      const { data, error } = await supabase.from('tracks').update(patch).eq('id', item.id).eq('owner_id', currentUserId).select('license_tiers');
+      save.disabled = stop.disabled = false;
+      if (error || !data || !data.length) { msg.className = 'lic-msg is-error'; msg.textContent = `Couldn't save: ${(error && error.message) || 'please try again'}`; return; }
+      item.license_tiers = data[0].license_tiers; sum.textContent = label(); msg.textContent = doneText;
+    };
+    save.addEventListener('click', () => {
+      if (!form) return;
+      const r = form.collect();
+      if (r.error) { msg.className = 'lic-msg is-error'; msg.textContent = r.error; return; }
+      run({ license_tiers: r.tiers, license_rights_confirmed: true }, 'Saved \u2713 Your licenses are now on the song page.');
+    });
+    stop.addEventListener('click', () => run({ license_tiers: null }, 'Licenses switched off. Sold licenses stay valid.'));
+    cardEl.appendChild(det);
   }
 
   // Producer's private Stems / WAV link (Google Drive) for Premium & Exclusive buyers. Saved in beat_extras.

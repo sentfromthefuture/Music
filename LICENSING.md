@@ -46,3 +46,47 @@ Run `supabase/complaints-update.sql` once after `complaints.sql` (a fresh instal
 
 ### Producer contact numbers (admin only)
 Run `supabase/admin-phones.sql` once. Admin → Complaints then shows each producer's verified **login number** (with call + WhatsApp links), falling back to their payout MoMo number if the lookup isn't set up. The numbers stay in Supabase's auth system and are only returned to admins by a function; they are never copied into public tables.
+
+---
+
+# Song licensing — optional licenses next to the normal download
+
+Artists can optionally offer licenses on a song (free or paid) so people can legally use it in videos, adverts, films, radio/TV or at
+events. The regular Free/Paid download is unchanged; a license is a separate purchase that also includes the file. The arrangement between
+ZAMI and the artist is explained in `SONG-LICENSING-TERMS.md`.
+
+## Switch on
+Run `supabase/song-licensing.sql` once in Supabase → SQL Editor (after `beat-licensing.sql` and `hardening.sql`; it is safe to run again).
+Until you do, the site behaves exactly as before: the new screens switch themselves on only when they detect the new columns.
+It is independent of beat licensing: it adds new columns, a new trigger and a new function, and does not change any beat column, rule or
+function, so re-running the beat SQL later cannot undo it.
+
+## What it adds
+- **Upload:** an optional "Also offer licenses for this song" section for tracks: five license types (Creator, Business & ads, Film/series/games,
+  Radio & TV, Live & DJ), each with a price, duration and territory, plus the rights confirmation that authorises ZAMI.
+- **My Uploads:** the same editor for songs that are already live (add, change or stop offering licenses).
+- **Song page:** a "License this song" block under the normal Download/Buy button.
+- **Checkout:** `checkout.html?type=track&id=…&license=creator|business|film|broadcast|live`. The server sets the price, an `SL-` license ID and a
+  frozen copy of the terms.
+- **License image + verify page:** `license.html?id=SL-XXXXXXXX` shows the frozen terms and whether the license has expired.
+- **Admin / Account:** license type shown on purchases; a license on a *free* song is approved with the public file link (free songs live in the
+  public bucket), a license on a paid song with a signed link as before.
+
+## Test after running the SQL (about 10 minutes)
+1. Upload a song, tick "Also offer licenses", choose a type, set a price, tick the confirmation.
+2. Approve it in Admin. Open the song page: the "License this song" block appears under Download/Buy.
+3. As a buyer, license it, send the payment SMS, then in Admin → Purchases tap **Mark Paid**. The buyer's Account shows the license and a
+   **License** button that saves the image. Open `license.html?id=SL-…` from the image to check it.
+4. Edit the song's licenses in My Uploads, then re-open the license you bought: it still shows the original (frozen) terms.
+
+## Pause
+`update public.tracks set license_tiers = null;` hides every song's license options. Licenses already sold stay valid and verifiable.
+
+## Edit the terms
+Everything (license types, examples, term wording, the artist authorisation text, the note shown to buyers) is in `app/lib/song-licenses.js`.
+Have a lawyer review the wording first.
+
+## Tests
+`tests/sql/song-scenarios.sql` (run after the beat scenarios; see `tests/sql/README.md`) tries to cheat the database: forged prices and terms,
+unapproved songs, unoffered license types, editing a sold license. `tests/e2e_song_licensing.py` covers the screens.
+

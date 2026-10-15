@@ -32,6 +32,12 @@ if (LIC) {
   beats.push({ id: 8, owner_id: 'u2', title: 'Gone Exclusive', genre: 'Hip-hop', price: 40, bpm: 95, preview_path: 'u2/b.wav', full_path: 'u2/gone.wav', cover_url: cover, status: 'removed', exclusive_sold: true, license_tiers: { exclusive: { price: 300 } }, play_count: 0, download_count: 0, purchase_count: 1, created_at: iso(40) });
   beats.push({ id: 7, owner_id: 'u2', title: 'Old Beat', genre: 'Hip-hop', price: 30, bpm: 100, preview_path: 'u2/b.wav', full_path: 'u2/oldbeat.wav', cover_url: cover, status: 'approved', play_count: 1, download_count: 0, purchase_count: 0, created_at: iso(30) });
 }
+// Song licensing mode simulates a database where supabase/song-licensing.sql HAS been run.
+const SONG = (() => { try { return localStorage.getItem('stub-songlic') === '1'; } catch { return false; } })();
+if (SONG) {
+  tracks.find((t) => t.id === 1).license_tiers = { creator: { price: 50, months: 12, territory: 'zm' }, business: { price: 300, months: 36, territory: 'africa' }, live: { price: 120, months: 0, territory: 'world' } };
+  tracks.find((t) => t.id === 2).license_tiers = { film: { price: 500, months: 0, territory: 'world' }, broadcast: { price: 800, months: 60, territory: 'zm' } };
+}
 const feedCols = (r, type) => ({ item_type: type, id: r.id, owner_id: r.owner_id, title: r.title, genre: r.genre, cover_url: r.cover_url, price: r.price, is_free: type === 'track' ? r.is_free : false, play_count: r.play_count, download_count: r.download_count || 0, purchase_count: r.purchase_count, created_at: r.created_at });
 const tables = {
   profiles, tracks, beats,
@@ -44,6 +50,15 @@ const tables = {
   beat_extras: LIC ? [{ beat_id: '3', owner_id: 'u2', link: 'https://drive.example.com/stems-3' }] : [], stem_requests: LIC ? [{ id: 1, purchase_id: '999', beat_id: '3', buyer_id: 'u9', producer_id: 'u2', buyer_name: 'Chanda B', buyer_contact: '+260972222222', status: 'requested', created_at: iso(2) }] : [],
   artist_follow_counts: [{ artist_id: 'u1', follower_count: 7 }],
 };
+if (SONG) {
+  const terms = (type, price, months, territory, title) => ({ v: 1, type, price, months, territory, title, artist: 'Chanda Beats' });
+  tables.purchases.push(
+    { id: 600, buyer_id: 'u4', item_id: 2, item_type: 'track', status: 'fulfilled', amount: 500, song_license_tier: 'film', license_id: 'SL-TEST0001', buyer_name: 'Mulenga K', buyer_contact: '+260971111111', fulfilled_at: iso(1), license_terms: terms('film', 500, 0, 'world', 'Paid Groove') },
+    { id: 601, buyer_id: 'u4', item_id: 1, item_type: 'track', status: 'fulfilled', amount: 50, song_license_tier: 'creator', license_id: 'SL-TEST0002', buyer_name: 'Mulenga K', buyer_contact: '+260971111111', fulfilled_at: iso(2), license_terms: terms('creator', 50, 12, 'zm', 'Free Anthem') },
+    { id: 602, buyer_id: 'u9', item_id: 1, item_type: 'track', status: 'fulfilled', amount: 300, song_license_tier: 'business', license_id: 'SL-TEST0003', buyer_name: 'Old Buyer', fulfilled_at: iso(24 * 800), license_terms: terms('business', 300, 12, 'africa', 'Free Anthem') },
+    { id: 603, buyer_id: 'u9', item_id: 1, item_type: 'track', status: 'requested', amount: 300, song_license_tier: 'business', license_id: 'SL-TEST0004', buyer_name: 'New Buyer', buyer_contact: '+260972222222', reference_number: 'ORD-AAAA', transaction_sms: 'Confirmed K300', license_terms: terms('business', 300, 36, 'africa', 'Free Anthem') },
+    { id: 604, buyer_id: 'u9', item_id: 2, item_type: 'track', status: 'requested', amount: 800, song_license_tier: 'broadcast', license_id: 'SL-TEST0005', buyer_name: 'Radio Z', buyer_contact: '+260973333333', reference_number: 'ORD-BBBB', transaction_sms: 'Confirmed K800', license_terms: terms('broadcast', 800, 60, 'zm', 'Paid Groove') });
+}
 window.__calls = window.__calls || []; window.__rpc = window.__rpc || [];
 window.__tables = tables;
 
@@ -71,6 +86,7 @@ class Q {
   then(res, rej) {
     window.__calls.push(`${this.t}:${this.op}`);
     if (this.op === 'select' && this.t === 'beats' && !LIC && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column beats.license_tiers does not exist' } }).then(res, rej);
+    if (this.op === 'select' && this.t === 'tracks' && !SONG && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column tracks.license_tiers does not exist' } }).then(res, rej);
     const rows = tables[this.t] || (tables[this.t] = []);
     let out; let error = null;
     if (this.op === 'insert') { const ins = [].concat(this.payload).map((r, i) => {
@@ -78,6 +94,10 @@ class Q {
         if (this.t === 'purchases' && row.license_tier) { // emulate the purchase guard trigger: server sets price + license id
           const b = tables.beats.find((x) => cmp(x.id, row.item_id)); const tier = b && b.license_tiers && b.license_tiers[row.license_tier];
           if (tier) { row.amount = tier.price; row.license_id = 'ZL-TEST' + String(rows.length + 100 + i).padStart(4, '0'); }
+        }
+        if (this.t === 'purchases' && row.song_license_tier) { // emulate zami_song_license_guard: server sets price, id and frozen terms
+          const tr = tables.tracks.find((x) => cmp(x.id, row.item_id)); const st = tr && tr.license_tiers && tr.license_tiers[row.song_license_tier];
+          if (st) { const ar = tables.profiles.find((x) => x.id === tr.owner_id); row.amount = st.price; row.license_id = 'SL-TEST' + String(rows.length + 100 + i).padStart(4, '0'); row.license_terms = { v: 1, type: row.song_license_tier, price: st.price, months: st.months, territory: st.territory, title: tr.title, artist: ar && ar.display_name }; }
         }
         return row;
       });
@@ -108,6 +128,12 @@ export function createClient() {
         const p = tables.purchases.find((x) => x.license_id === String(args.p_license_id).toUpperCase() && x.status === 'fulfilled');
         const b = p && tables.beats.find((x) => cmp(x.id, p.item_id)); const pr = b && tables.profiles.find((x) => x.id === b.owner_id);
         return Promise.resolve({ data: p ? [{ license_id: p.license_id, tier: p.license_tier, buyer_name: p.buyer_name, beat_title: b.title, producer_name: pr && pr.display_name, issued_at: p.fulfilled_at, extras: !!(b.license_tiers && b.license_tiers[p.license_tier] && b.license_tiers[p.license_tier].extras) }] : [], error: null });
+      }
+      if (name === 'verify_song_license') {
+        const p = tables.purchases.find((x) => x.license_id === String(args.p_license_id).toUpperCase().trim() && x.status === 'fulfilled' && x.song_license_tier);
+        const t = (p && p.license_terms) || {}; let exp = null;
+        if (p && t.months > 0) { const d = new Date(p.fulfilled_at); d.setUTCMonth(d.getUTCMonth() + t.months); exp = d.toISOString(); }
+        return Promise.resolve({ data: p ? [{ license_id: p.license_id, license_type: p.song_license_tier, buyer_name: p.buyer_name, song_title: t.title, artist_name: t.artist, issued_at: p.fulfilled_at, months: t.months, territory: t.territory, expires_at: exp }] : [], error: null });
       }
       if (name === 'admin_user_phones') return Promise.resolve({ data: curUser() && curUser().id === 'u3' ? [{ id: 'u2', phone: '260977111222' }] : null, error: curUser() && curUser().id === 'u3' ? null : { message: 'Not allowed' } });
       if (name === 'reopen_complaint') { const c = tables.purchase_complaints.find((x) => cmp(x.id, args.p_id)); if (c) { c.status = 'open'; c.producer_fixed_at = null; c.reopened_at = new Date().toISOString(); } return Promise.resolve({ data: null, error: c ? null : { message: 'Complaint not found' } }); }

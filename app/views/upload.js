@@ -2,6 +2,8 @@
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { licensingEnabled, TIERS, loadCssOnce } from '../lib/licenses.js';
+import { songLicensingEnabled } from '../lib/song-licenses.js';
+import { createSongLicenseForm } from '../ui/song-license-form.js';
 
 export const title = "Upload — Music Platform";
 export const css = 'css/views/upload.css';
@@ -81,6 +83,11 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
       <label for="beat-tags">Mood tags (optional)</label>
       <input type="text" id="beat-tags" maxlength="80" placeholder="e.g. dark, party, chill" />
       <label class="lic-check"><input type="checkbox" id="rights-confirm" /><span>I made this beat, or I have the right to license it (any samples in it are cleared).</span></label>
+    </div>
+
+    <div id="song-lic-field" class="hidden">
+      <label class="lic-check"><input type="checkbox" id="song-lic-offer" /><span><strong>Also offer licenses for this song</strong> (optional) — so people can legally use it in videos, adverts, films, radio/TV or events. The normal download stays as you set it above.</span></label>
+      <div id="song-lic-form" class="hidden"></div>
     </div>
 
     <label>Cover image</label>
@@ -186,6 +193,19 @@ export async function mount({ supabase, timers: __t, document }) {
     return { tiers: out };
   }
 
+  // Optional song licenses: shown for tracks only once the database upgrade (supabase/song-licensing.sql) has been run.
+  let songLicOn = false, songLicForm = null;
+  function syncSongLicUi() {
+    document.getElementById('song-lic-field').classList.toggle('hidden', !(selectedType === 'track' && songLicOn));
+  }
+  songLicensingEnabled().then((on) => { songLicOn = on; if (on) loadCssOnce('app/css/licensing.css'); syncSongLicUi(); });
+  document.getElementById('song-lic-offer').addEventListener('change', (e) => {
+    const box = document.getElementById('song-lic-form');
+    if (e.target.checked && !songLicForm) { songLicForm = createSongLicenseForm({ idPrefix: 'up' }); box.append(songLicForm.el); }
+    box.classList.toggle('hidden', !e.target.checked);
+  });
+  const wantsSongLic = () => selectedType === 'track' && songLicOn && document.getElementById('song-lic-offer').checked && !!songLicForm;
+
   // Type toggle
   document.querySelectorAll('.type-toggle button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -202,6 +222,7 @@ export async function mount({ supabase, timers: __t, document }) {
         document.getElementById('amount-field').classList.remove('hidden');
       }
       syncTiersUi();
+      syncSongLicUi();
       maybeShowWaveform();
     });
   });
@@ -554,6 +575,11 @@ export async function mount({ supabase, timers: __t, document }) {
       musicKey = document.getElementById('music-key').value.trim().slice(0, 20);
       tagList = [...new Set(document.getElementById('beat-tags').value.split(',').map((t) => t.trim().toLowerCase().slice(0, 20)).filter(Boolean))].slice(0, 6);
     }
+    let songLicResult = null;
+    if (wantsSongLic()) {
+      songLicResult = songLicForm.collect();
+      if (songLicResult.error) { setStatus(songLicResult.error, true); setButtonLoading(submitBtn, false); return; }
+    }
     if (!isFree && (!price || price <= 0)) {
       setStatus('Please set a price.', true);
       setButtonLoading(submitBtn, false);
@@ -628,7 +654,7 @@ export async function mount({ supabase, timers: __t, document }) {
         const reference_number = genRef(prefix);
         const payload = selectedType === 'beat'
           ? { owner_id: user.id, title, genre, bpm: bpm ? Number(bpm) : null, price, preview_path: previewPath, full_path: fullPath, cover_url: coverUrl, ...(useTiers ? { license_tiers: tiersResult.tiers, music_key: musicKey || null, tags: tagList.length ? tagList : null, rights_confirmed: true } : {}), status: 'pending_payment', reference_number, duration_seconds: duration }
-          : { owner_id: user.id, title, genre, is_free: isFree, price, preview_path: previewPath, file_path: fullPath, cover_url: coverUrl, status: 'pending_payment', reference_number, duration_seconds: duration };
+          : { owner_id: user.id, title, genre, is_free: isFree, price, preview_path: previewPath, file_path: fullPath, cover_url: coverUrl, ...(songLicResult ? { license_tiers: songLicResult.tiers, license_rights_confirmed: true } : {}), status: 'pending_payment', reference_number, duration_seconds: duration };
 
         const { data, error } = await supabase.from(table).insert(payload).select().single();
         if (!error) { insertedRow = data; break; }

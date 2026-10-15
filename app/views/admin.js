@@ -2,6 +2,7 @@
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { tierLabel } from '../lib/licenses.js';
+import { songLicenseLabel, durationLabel, territoryLabel } from '../lib/song-licenses.js';
 
 export const title = "Admin — Music Platform";
 export const css = 'css/views/admin.css';
@@ -296,12 +297,12 @@ export async function mount({ supabase, timers: __t, document }) {
     const beatIds = purchases.filter(p => p.item_type === 'beat').map(p => p.item_id);
 
     const [{ data: trackItems }, { data: beatItems }] = await Promise.all([
-      trackIds.length ? supabase.from('tracks').select('id, title, file_path').in('id', trackIds) : { data: [] },
+      trackIds.length ? supabase.from('tracks').select('id, title, file_path, is_free').in('id', trackIds) : { data: [] },
       beatIds.length ? supabase.from('beats').select('id, title, full_path').in('id', beatIds) : { data: [] },
     ]);
 
     const itemMap = new Map();
-    (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { title: t.title, path: t.file_path }));
+    (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { title: t.title, path: t.file_path, isFree: !!t.is_free }));
     (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { title: b.title, path: b.full_path }));
 
     container.innerHTML = '';
@@ -314,7 +315,7 @@ export async function mount({ supabase, timers: __t, document }) {
       const item = itemMap.get(`${purchase.item_type}-${purchase.item_id}`) || { title: '(item not found)', path: null };
       const card = cardShell(`
         <p class="title">${escapeHtml(item.title)}</p>
-        <p class="meta">Buyer: ${escapeHtml(purchase.buyer_contact)} · K${purchase.amount}${purchase.license_tier ? ' · ' + escapeHtml(tierLabel(purchase.license_tier)) : ''}</p>
+        <p class="meta">Buyer: ${escapeHtml(purchase.buyer_contact)} · K${purchase.amount}${purchase.license_tier ? ' · ' + escapeHtml(tierLabel(purchase.license_tier)) : ''}${purchase.song_license_tier ? ' · Song license: ' + escapeHtml(songLicenseLabel(purchase.song_license_tier)) + (purchase.license_terms ? ' (' + escapeHtml((purchase.license_terms.months ? durationLabel(purchase.license_terms.months) : 'Lifetime') + ', ' + territoryLabel(purchase.license_terms.territory)) + ')' : '') : ''}</p>
         <div class="ref-badge">${escapeHtml(purchase.reference_number)}</div>
         <div class="sms-box">${escapeHtml(purchase.transaction_sms || '(no SMS text)')}</div>
         <div class="row-actions">
@@ -329,9 +330,12 @@ export async function mount({ supabase, timers: __t, document }) {
 
         const ext = (item.path.split('.').pop() || 'mp3').toLowerCase();
         const safeTitle = (item.title || 'track').replace(/[\\/:*?"<>|]/g, '').trim();
-        const { data: signedData, error: signedErr } = await supabase.storage
-          .from('private-full')
-          .createSignedUrl(item.path, 86400, { download: `${safeTitle}.${ext}` }); // 24h — buyer may not check back within an hour
+        const { data: signedData, error: signedErr } = item.isFree
+          // a free song's file is in the public bucket (a license on it still gets a link, but no signing is needed)
+          ? { data: { signedUrl: supabase.storage.from('public-previews').getPublicUrl(item.path, { download: `${safeTitle}.${ext}` }).data.publicUrl }, error: null }
+          : await supabase.storage
+            .from('private-full')
+            .createSignedUrl(item.path, 86400, { download: `${safeTitle}.${ext}` }); // 24h — buyer may not check back within an hour
         if (signedErr) { alert(signedErr.message); e.target.disabled = false; return; }
 
         const { error } = await supabase.from('purchases')
@@ -408,7 +412,7 @@ export async function mount({ supabase, timers: __t, document }) {
       if (total + part > target) part = target - total;
       total += part;
       const title = titles.get(sale.item_type + ':' + sale.item_id) || 'Unknown item';
-      const tier = sale.license_tier ? ` · ${escapeHtml(tierLabel(sale.license_tier))}` : '';
+      const tier = sale.license_tier ? ` · ${escapeHtml(tierLabel(sale.license_tier))}` : (sale.song_license_tier ? ` · ${escapeHtml(songLicenseLabel(sale.song_license_tier))} license` : '');
       const date = sale.fulfilled_at ? ` · ${escapeHtml(new Date(sale.fulfilled_at).toLocaleDateString())}` : '';
       const ref = sale.license_id ? ` · ${escapeHtml(sale.license_id)}` : '';
       const partial = part !== (Number(sale.amount) || 0) ? ' (part)' : '';

@@ -3,6 +3,7 @@
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { licensingEnabled } from '../lib/licenses.js';
 import { addLicenseControls } from '../ui/license-controls.js';
+import { addSongLicenseControls } from '../ui/song-license-controls.js';
 import { complaintsEnabled, mountProducerComplaints } from '../ui/complaints.js';
 
 export const title = "My Account — Music Platform";
@@ -291,11 +292,11 @@ export async function mount({ supabase, timers: __t, document }) {
     const beatIds = purchases.filter(p => p.item_type === 'beat').map(p => p.item_id);
     const lic = await licensingEnabled();
     const [{ data: trackItems }, { data: beatItems }] = await Promise.all([
-      trackIds.length ? supabase.from('tracks').select('id, title, file_path').in('id', trackIds) : { data: [] },
+      trackIds.length ? supabase.from('tracks').select('id, title, file_path, is_free').in('id', trackIds) : { data: [] },
       beatIds.length ? supabase.from('beats').select(lic ? 'id, title, full_path, owner_id, license_tiers' : 'id, title, full_path').in('id', beatIds) : { data: [] },
     ]);
     const itemMap = new Map();
-    (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { title: t.title, path: t.file_path }));
+    (trackItems || []).forEach(t => itemMap.set(`track-${t.id}`, { title: t.title, path: t.file_path, isFree: !!t.is_free }));
     (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { title: b.title, path: b.full_path, owner_id: b.owner_id, license_tiers: b.license_tiers }));
 
     container.innerHTML = '<div class="list-card"></div>';
@@ -314,7 +315,10 @@ export async function mount({ supabase, timers: __t, document }) {
         e.target.textContent = 'Loading…';
         const ext = (item.path.split('.').pop() || 'mp3').toLowerCase();
         const safeTitle = (item.title || 'track').replace(/[\\/:*?"<>|]/g, '').trim();
-        const { data: signedData, error } = await supabase.storage.from('private-full').createSignedUrl(item.path, 3600, { download: `${safeTitle}.${ext}` });
+        // a free song (bought only as a license) lives in the public bucket
+        const { data: signedData, error } = item.isFree
+          ? { data: { signedUrl: supabase.storage.from('public-previews').getPublicUrl(item.path, { download: `${safeTitle}.${ext}` }).data.publicUrl }, error: null }
+          : await supabase.storage.from('private-full').createSignedUrl(item.path, 3600, { download: `${safeTitle}.${ext}` });
         if (error) {
           e.target.textContent = 'Failed';
           return;
@@ -324,7 +328,8 @@ export async function mount({ supabase, timers: __t, document }) {
         e.target.disabled = false;
       });
       listCard.appendChild(row);
-      if (lic && purchase.license_id) addLicenseControls({ supabase, row, purchase, item });
+      if (purchase.song_license_tier) addSongLicenseControls({ row, purchase, item });
+      else if (lic && purchase.license_id) addLicenseControls({ supabase, row, purchase, item });
     }
     if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
   }

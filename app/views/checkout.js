@@ -3,6 +3,8 @@
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { readTiers, loadCssOnce } from '../lib/licenses.js';
 import { saveLicense } from '../ui/license-canvas.js';
+import { readSongLicenses, songTermsFor, BUYER_NOTE } from '../lib/song-licenses.js';
+import { saveSongLicense } from '../ui/song-license-canvas.js';
 
 export const title = "Checkout — Music Platform";
 export const css = 'css/views/checkout.css';
@@ -115,18 +117,31 @@ export async function mount({ supabase, timers: __t, document }) {
       }
     }
 
+    // Songs: an optional license (?license=creator|business|film|broadcast|live) instead of the regular download.
+    if (itemType === 'track' && params.get('license')) {
+      chosen = (readSongLicenses(item) || []).find((l) => l.key === params.get('license')) || null;
+      if (!chosen) {
+        loading.textContent = '';
+        const a = document.createElement('a');
+        a.href = `detail.html?type=track&id=${encodeURIComponent(item.id)}`;
+        a.textContent = 'See the licenses on the song page';
+        loading.append('This license is not offered for this song. ', a, '.');
+        return;
+      }
+    }
+
     loading.classList.add('hidden');
     content.classList.remove('hidden');
 
     document.getElementById('item-title').textContent = item.title;
-    document.getElementById('item-meta').textContent = `${item.genre || ''}${itemType === 'beat' ? ' · Beat' : ''}${chosen ? ' · ' + chosen.label : ''}`;
+    document.getElementById('item-meta').textContent = `${item.genre || ''}${itemType === 'beat' ? ' · Beat' : ''}${chosen ? ' · ' + chosen.label + (chosen.song ? ' license' : '') : ''}`;
     if (item.cover_url) {
       const thumb = document.getElementById('item-thumb');
       thumb.style.backgroundImage = `url(${item.cover_url})`;
       thumb.textContent = '';
     }
 
-    const isFreeTrack = itemType === 'track' && item.is_free;
+    const isFreeTrack = itemType === 'track' && item.is_free && !chosen;
 
     if (isFreeTrack) {
       document.getElementById('free-section').classList.remove('hidden');
@@ -137,6 +152,18 @@ export async function mount({ supabase, timers: __t, document }) {
     } else {
       document.getElementById('buy-section').classList.remove('hidden');
       document.getElementById('price-display').textContent = `K${chosen ? chosen.price : item.price}`;
+      if (chosen && chosen.song) {
+        loadCssOnce('app/css/licensing.css');
+        let artist = '';
+        try { const { data } = await supabase.from('profiles').select('display_name').eq('id', item.owner_id).maybeSingle(); artist = (data && data.display_name) || ''; } catch { /* name is optional */ }
+        const det = document.createElement('details'); det.className = 'lic-terms'; det.open = true;
+        const sum = document.createElement('summary'); sum.textContent = 'What this license includes'; det.append(sum);
+        const ul = document.createElement('ul');
+        for (const t of songTermsFor(chosen.key, { artist, months: chosen.months, territory: chosen.territory })) { const li = document.createElement('li'); li.textContent = t; ul.append(li); }
+        const note = document.createElement('p'); note.className = 'lic-note'; note.textContent = BUYER_NOTE + ' You also get the song file.';
+        det.append(ul, note);
+        const priceEl = document.getElementById('price-display'); priceEl.parentNode.insertBefore(det, priceEl.nextSibling);
+      }
       wireBuyFlow(item, table, chosen);
     }
   })();
@@ -193,7 +220,7 @@ export async function mount({ supabase, timers: __t, document }) {
           item_type: table === 'beats' ? 'beat' : 'track',
           amount: unitPrice,
           reference_number,
-          ...(chosen ? { license_tier: chosen.key, buyer_name: buyerName } : {}),
+          ...(chosen ? (chosen.song ? { song_license_tier: chosen.key, buyer_name: buyerName } : { license_tier: chosen.key, buyer_name: buyerName }) : {}),
         }).select().single();
         if (!error) { inserted = data; break; }
         if (error.code !== '23505') {
@@ -260,7 +287,12 @@ export async function mount({ supabase, timers: __t, document }) {
         btn.disabled = true;
         let producer = '';
         try { const { data } = await supabase.from('profiles').select('display_name').eq('id', item.owner_id).maybeSingle(); producer = (data && data.display_name) || ''; } catch { /* name is optional */ }
-        await saveLicense({ licenseId: row.license_id, tier: row.license_tier, buyerName: row.buyer_name, beatTitle: item.title, producer, issuedAt: row.fulfilled_at, extras: chosen.extras });
+        if (chosen.song) {
+          const t = row.license_terms || {};
+          await saveSongLicense({ licenseId: row.license_id, type: row.song_license_tier || chosen.key, buyerName: row.buyer_name, title: t.title || item.title, artist: t.artist || producer, issuedAt: row.fulfilled_at, months: t.months != null ? t.months : chosen.months, territory: t.territory || chosen.territory });
+        } else {
+          await saveLicense({ licenseId: row.license_id, tier: row.license_tier, buyerName: row.buyer_name, beatTitle: item.title, producer, issuedAt: row.fulfilled_at, extras: chosen.extras });
+        }
         btn.disabled = false;
       });
       wrap.append(btn);

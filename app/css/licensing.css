@@ -43,3 +43,23 @@
 .lic-req { border-top: 1px solid var(--zs-border); padding: 10px 0; font-size: 13.5px; }
 .lic-req:first-of-type { border-top: 0; }
 .lic-req p { margin: 2px 0; }
+/* song licensing (upload form, My Uploads editor, song page block) */
+.slic-block { margin: 18px 0 6px; }
+.slic-h { font-size: 17px; margin: 0 0 4px; }
+.slic { border: 1px solid var(--zs-border); border-radius: 12px; padding: 4px 12px 8px; margin: 10px 0; background: var(--zs-surface); }
+.slic-row { border-top: 1px solid var(--zs-border); padding: 10px 0; }
+.slic-row:first-child { border-top: 0; }
+#zs-view .slic-head { display: flex; align-items: flex-start; gap: 10px; margin: 0; font-weight: 600; }
+#zs-view .slic-head input[type=checkbox], #zs-view .slic .lic-check input { width: auto; flex: none; margin-top: 3px; }
+.slic-head small { display: block; font-weight: 400; color: var(--zs-ink-muted); }
+.slic-fields { margin: 8px 0 2px 28px; }
+.slic-fields[hidden] { display: none; }
+.slic-uses { font-size: 12px; color: var(--zs-ink-muted); margin: 0 0 8px; }
+.slic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.slic-grid label { font-size: 12px; font-weight: 600; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.slic-grid label:first-child { grid-column: 1 / -1; }
+#zs-view .slic-grid input, #zs-view .slic-grid select { width: 100%; box-sizing: border-box; }
+#zs-view .slic .lic-check { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 2px; font-size: 13px; font-weight: 400; }
+.slic-card { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border, #e5e5e5); }
+.slic-card summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.slic-card .lic-actions { margin-top: 10px; }

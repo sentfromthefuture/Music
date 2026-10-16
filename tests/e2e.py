@@ -192,6 +192,13 @@ def run():
         check('genre chip filters the feed', p.locator('#grid .zs-card').count() == 1 and 'Night Drive' in p.locator('#grid .zs-card-title').inner_text())
         p.reload(); p.wait_for_selector('.zs-card'); time.sleep(0.5)
         check('refresh keeps the genre filter from the URL', p.locator('.chip.active').get_attribute('data-genre') == 'Hip-hop')
+        # infinite scroll: only the first page loads; scrolling to the end brings the next page without a click
+        p.goto(BASE + 'browse.html'); p.wait_for_selector('#grid .zs-card'); time.sleep(0.8)
+        first = p.locator('#grid .zs-card').count()
+        check('browse loads only the first page at first', 0 < first <= 20, str(first))
+        p.evaluate("window.scrollTo(0, document.body.scrollHeight)"); time.sleep(1.2)
+        p.evaluate("window.scrollTo(0, document.body.scrollHeight)"); time.sleep(1.2)
+        check('scrolling down loads the next page automatically', p.locator('#grid .zs-card').count() > first, f"{first} -> {p.locator('#grid .zs-card').count()}")
         # artist filter + load more
         p.goto(BASE + 'browse.html'); p.wait_for_selector('.zs-card')
         n_cards = p.locator('#grid .zs-card').count()

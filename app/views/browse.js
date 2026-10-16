@@ -146,6 +146,7 @@ export async function mount(ctx) {
   const { root, params, state, supabase } = ctx;
   const $ = (id) => root.querySelector('#' + id);
   const grid = $('grid'), loadMoreBtn = $('load-more-btn'), searchInput = $('search-input');
+  let loadMoreObserver = null; // auto-loads the next page as the user nears the bottom (button stays as a fallback)
   const chips = $('genre-chips'), strip = $('artist-strip'), pill = $('artist-filter-pill');
   $('search-ico').innerHTML = icon('search', 20);
   wireGlobalSync();
@@ -198,6 +199,8 @@ export async function mount(ctx) {
       S.hasMore = rows.length === api.PAGE_SIZE;
       renderGrid();
       ctx.ready();
+      // re-check whether the end of the list is already in view (tall screens) so the next page can follow
+      if (loadMoreObserver && S.hasMore) { loadMoreObserver.unobserve(loadMoreBtn); loadMoreObserver.observe(loadMoreBtn); }
     } catch (e) {
       if (token !== feedToken || !ctx.isAlive()) return;
       console.error(e);
@@ -214,6 +217,13 @@ export async function mount(ctx) {
     S.genre = chip.dataset.genre; syncChips(); updateLayout(); pushUrl(); loadFeed(true);
   });
   loadMoreBtn.addEventListener('click', () => loadFeed(false));
+  if ('IntersectionObserver' in window) {
+    loadMoreObserver = new IntersectionObserver((entries) => {
+      if (entries.some((en) => en.isIntersecting) && S.hasMore && !loadMoreBtn.disabled && !loadMoreBtn.classList.contains('hidden')) loadFeed(false);
+    }, { rootMargin: '300px 0px' });
+    loadMoreObserver.observe(loadMoreBtn);
+    ctx.onCleanup(() => loadMoreObserver.disconnect());
+  }
   root.querySelectorAll('.see-all').forEach((btn) => btn.addEventListener('click', () => {
     const target = $(btn.dataset.target);
     if (target) target.scrollTo({ left: target.scrollWidth, behavior: 'smooth' });

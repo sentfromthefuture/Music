@@ -58,16 +58,68 @@ export async function mount({ supabase, timers: __t, document }) {
   const logoutBtn = document.getElementById('logout-btn');
   let salesView = null; // the "Purchased Items" tab (app/ui/admin-sales.js), created the first time it is opened
 
-  // --- Access check ---
-  (async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      gate.innerHTML = 'Please <a href="login.html">log in</a> first.';
-      return;
-    }
+  // --- Access check (OTP login built in; no password) ---
+  const normalizePhone = (raw) => {
+    const c = String(raw || '').replace(/[\s\-()]/g, '');
+    let n = null;
+    if (c.startsWith('+260')) n = c; else if (c.startsWith('260')) n = '+' + c;
+    else if (c.startsWith('0')) n = '+260' + c.slice(1); else n = '+260' + c;
+    return /^\+260\d{9}$/.test(n) ? n : null;
+  };
+  function showLogin(note) {
+    const box = document.createElement('div');
+    box.style.cssText = 'max-width:360px;margin:0 auto;text-align:left;';
+    box.innerHTML = `
+      <p style="margin:0 0 4px;font-size:18px;font-weight:700;">Admin login</p>
+      <p class="sub" style="margin:0 0 12px;">Enter your phone number to get a one-time code.</p>
+      <div id="adm-phone-step">
+        <input type="tel" id="adm-phone" placeholder="0971234567" autocomplete="tel" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:var(--surface);color:var(--ink);" />
+        <button type="button" id="adm-send" class="approve" style="margin-top:10px;width:100%;flex:none;">Send code</button>
+      </div>
+      <div id="adm-otp-step" class="hidden">
+        <input type="text" id="adm-otp" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;letter-spacing:4px;background:var(--surface);color:var(--ink);" />
+        <button type="button" id="adm-verify" class="approve" style="margin-top:10px;width:100%;flex:none;">Verify &amp; log in</button>
+        <button type="button" id="adm-change" style="margin-top:8px;width:100%;background:none;border:0;color:var(--accent);font-size:14px;cursor:pointer;">Use a different number</button>
+      </div>
+      <p id="adm-status" style="margin:10px 0 0;font-size:13px;color:var(--ink-muted);"></p>`;
+    gate.replaceChildren(box);
+    const $ = (id) => box.querySelector('#' + id);
+    const status = (t, err) => { $('adm-status').textContent = t || ''; $('adm-status').style.color = err ? '#b3261e' : 'var(--ink-muted)'; };
+    if (note) status(note, true);
+    let phone = null;
+    $('adm-send').addEventListener('click', async (e) => {
+      phone = normalizePhone($('adm-phone').value);
+      if (!phone) { status('Enter a valid Zambian number, e.g. 0971234567 or +260971234567', true); return; }
+      e.target.disabled = true; status('Sending…');
+      // shouldCreateUser:false -> this page can never create a new account, only log in existing ones
+      const { error } = await supabase.auth.signInWithOtp({ phone, options: { shouldCreateUser: false } });
+      e.target.disabled = false;
+      if (error) { status(/signups not allowed|not found/i.test(error.message) ? 'This number is not registered.' : error.message, true); return; }
+      status('');
+      $('adm-phone-step').classList.add('hidden'); $('adm-otp-step').classList.remove('hidden'); $('adm-otp').focus();
+    });
+    $('adm-verify').addEventListener('click', async (e) => {
+      const token = $('adm-otp').value.trim();
+      if (token.length !== 6) { status('Enter the 6-digit code from the SMS.', true); return; }
+      e.target.disabled = true; status('Verifying…');
+      const { data: vdata, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
+      e.target.disabled = false;
+      if (error) { status(error.message, true); return; }
+      checkAccess(true, vdata && vdata.user);
+    });
+    $('adm-change').addEventListener('click', () => {
+      $('adm-otp-step').classList.add('hidden'); $('adm-phone-step').classList.remove('hidden'); $('adm-otp').value = ''; status('');
+    });
+  }
+  async function checkAccess(justLoggedIn, knownUser) {
+    // right after a code check we already have the user; don't rely on the shared cached lookup
+    const user = knownUser || (await supabase.auth.getUser()).data.user;
+    if (!user) { showLogin(); return; }
     const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
     if (!profile || !profile.is_admin) {
-      gate.textContent = "You don't have access to this page.";
+      // logged in, but not an admin: offer to switch numbers (never sign someone out without asking)
+      gate.innerHTML = `<p style="margin:0 0 10px;">${justLoggedIn ? "This number doesn't have admin access." : "You're logged in without admin access."}</p><button type="button" id="adm-switch" class="approve" style="flex:none;">Log out and use an admin number</button>`;
+      gate.querySelector('#adm-switch').addEventListener('click', async () => { await supabase.auth.signOut(); showLogin(); });
       return;
     }
     gate.classList.add('hidden');
@@ -75,11 +127,12 @@ export async function mount({ supabase, timers: __t, document }) {
     logoutBtn.classList.remove('hidden');
     loadStats();
     loadReview();
-  })();
+  }
+  checkAccess(false);
 
   logoutBtn.addEventListener('click', async () => {
     await supabase.auth.signOut();
-    __navigate('login.html');
+    __reload();
   });
 
   // --- Tabs ---

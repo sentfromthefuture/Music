@@ -129,6 +129,18 @@ def run():
         check('admin can mark it resolved', p.evaluate("() => window.__calls.includes('purchase_complaints:update')"))
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 
+        # admin OTP login: logged-out visitors get a phone -> code form, no password, never creates accounts
+        e = lic_env(pw); p = e.open('admin.html'); p.wait_for_selector('#adm-phone', timeout=8000)
+        check('admin page shows an OTP login form when logged out', p.locator('#adm-send').count() == 1 and p.locator('input[type=password]').count() == 0 and not p.locator('#admin-area').is_visible())
+        p.fill('#adm-phone', '0975555555'); p.click('#adm-send'); p.wait_for_selector('#adm-otp', state='visible', timeout=6000)
+        sent = p.evaluate("() => window.__rpc.filter((c) => c[0] === 'signInWithOtp').map((c) => c[1])")
+        check('code is sent to the normalised number and cannot create accounts', len(sent) == 1 and sent[0].get('phone') == '+260975555555' and sent[0].get('options', {}).get('shouldCreateUser') is False, str(sent))
+        p.fill('#adm-otp', '123456'); p.click('#adm-verify'); p.wait_for_selector('.tab-btn[data-tab="review"]', state='visible', timeout=8000)
+        check('admin number logs in and opens the admin area', p.locator('#admin-area').is_visible() and p.locator('#logout-btn').is_visible())
+        check('no JS errors (admin login)', not e.errors, '; '.join(e.errors[:3])); e.close()
+        e = lic_env(pw, user='u1'); p = e.open('admin.html'); p.wait_for_selector('#adm-switch', timeout=8000)
+        check('non-admin sees no admin area and is asked before being logged out', not p.locator('#admin-area').is_visible() and 'without admin access' in p.locator('#gate').inner_text()); e.close()
+
         # ------------------------------------------------ F. verify page
         print('F. License verify page')
         e = lic_env(pw); p = e.open('license.html?id=zl-test0001'); p.wait_for_selector('.lic-card', timeout=8000); time.sleep(0.4)

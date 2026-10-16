@@ -47,7 +47,7 @@ export const TIERS = {
   },
 };
 
-export const VERIFY_BASE = 'https://sentfromthefuture.github.io/Music/license.html?id=';
+export const VERIFY_BASE = 'https://zami.site/license.html?id=';
 
 export const tierLabel = (key) => TIERS[key]?.label || key || '';
 // extras=false hides the "WAV and stems on request" line for beats whose producer does not offer them.

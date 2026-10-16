@@ -11,7 +11,7 @@
   new zami.apk to the repo (same filename, same folder), it overwrites
   the old one automatically and this link keeps working.
 */
-window.ZAMI_APK_URL = "https://sentfromthefuture.github.io/Music/zami.apk";
+window.ZAMI_APK_URL = "https://zami.site/zami.apk";
 
 // Optional: bump this when you release a new version so the download
 // page can display it (purely cosmetic, doesn't affect the link above).

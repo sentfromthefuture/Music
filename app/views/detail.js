@@ -23,7 +23,7 @@ export const markup = `<div class="wrap">
   <div id="content" class="hidden"></div>
 </div>`;
 
-const SHARE_BASE = 'https://sentfromthefuture.github.io/Music/';
+const SHARE_BASE = 'https://zami.site/';
 
 // Builds a safe "Track Title.mp3" filename for Supabase's `download` option (same rule as before).
 function downloadFilename(t, storagePath) {

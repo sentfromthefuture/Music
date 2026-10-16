@@ -1,7 +1,7 @@
 # Deploying the modernised ZAMI front-end
 
 No build step, no new services, no database changes. It is the same kind of static site as before,
-served by GitHub Pages from the same path (`https://sentfromthefuture.github.io/Music/`).
+served by GitHub Pages. The site now lives on its own domain, `https://zami.site/` (see `CNAME`); licence verify links, share links and the APK download link all use that domain.
 
 ## 1. Apply it to your repo (manual copy is fine)
 

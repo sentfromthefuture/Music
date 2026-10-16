@@ -37,3 +37,12 @@ before and the Rejected uploads section explains the missing step.
 **Modified:** `app/views/admin.js` (new tab, shared search, best-effort rejection log), `tests/stub-supabase.js`.
 **Tests:** `tests/e2e_admin_sales.py` (34 checks), `tests/sql/rejections-scenarios.sql`.
 
+## Artist balance page: richer "Sales by item"
+**Added:** `app/ui/artist-sales.js`, `app/css/artist-sales.css`. The "Sales by item" card on `balance.html` now shows: sales count, what customers paid, what the artist
+receives (75%), this month, and the best seller; filters (All / Songs / Beats / Licenses) and sorting (most revenue / most sold / latest sale). Each item shows how many
+sold, the gross, what the artist earns, the date of the last sale, a license mix (e.g. "Creator x3, Business & ads x1") and how many purchases are still waiting for approval.
+Tap an item to see every sale: date, license type and ID, the name printed on the license, the amount, the artist's cut, and (song licenses) valid-until / Expired.
+Items with no sales are listed greyed out. Buyers' phone numbers and payment SMS are never requested or shown. No SQL change: artists could already read the purchases of their own items.
+**Modified:** `app/views/balance.js` (uses the new module; the balance, withdrawal and payout logic is untouched; the "Beats sold" tile, which counted songs too, is now "Items sold"),
+`tests/stub-supabase.js`. **Tests:** `tests/e2e_artist_sales.py` (30 checks).
+

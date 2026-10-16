@@ -63,6 +63,13 @@ if (SONG) {
 }
 tables.upload_rejections = REJ ? [{ id: 1, item_type: 'track', item_id: '6', owner_id: 'u2', title: 'No Preview Yet', genre: 'Other', reference_number: 'TRK-ZZZZ', transaction_sms: 'Confirmed K25 sent', rejected_at: iso(30) }] : null;
 tables.purchases.push({ id: 605, buyer_id: 'u9', item_id: 2, item_type: 'track', status: 'rejected', amount: 20, buyer_contact: '+260974444444', reference_number: 'ORD-REJ1', transaction_sms: 'fake sms', created_at: iso(10) });
+// Artist-sales mode (localStorage stub-artistsales=1): two more song licenses on Free Anthem, so item sorting can be told apart.
+if (SONG && (() => { try { return localStorage.getItem('stub-artistsales') === '1'; } catch { return false; } })()) {
+  const lt = (m, t) => ({ v: 1, type: 'creator', price: 50, months: m, territory: t, title: 'Free Anthem', artist: 'Chanda Beats' });
+  tables.purchases.push(
+    { id: 610, buyer_id: 'u9', item_id: 1, item_type: 'track', status: 'fulfilled', amount: 50, song_license_tier: 'creator', license_id: 'SL-TEST0010', buyer_name: 'Third Buyer', buyer_contact: '+260975555555', fulfilled_at: iso(0.1), license_terms: lt(12, 'zm') },
+    { id: 611, buyer_id: 'u9', item_id: 1, item_type: 'track', status: 'fulfilled', amount: 50, song_license_tier: 'creator', license_id: 'SL-TEST0011', buyer_name: 'Fourth Buyer', buyer_contact: '+260976666666', fulfilled_at: iso(3), license_terms: lt(12, 'zm') });
+}
 window.__calls = window.__calls || []; window.__rpc = window.__rpc || [];
 window.__tables = tables;
 

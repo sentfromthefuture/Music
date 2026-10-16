@@ -34,7 +34,7 @@ def run():
         check('song license row: what, price, license, ID', all(x in st for x in ['Paid Groove', 'Song', 'Approved', 'K500', 'Film, series & games license (Lifetime, Worldwide)', 'SL-TEST0001']), st)
         check('row says who bought it (account + name on the license) with call + WhatsApp links', 'Listener' in st and 'name on license: Mulenga K' in st and song.locator('a[href="tel:+260971111111"]').count() == 1 and song.locator('a[href="https://wa.me/260971111111"]').count() == 1, st)
         check('row says from which artist and the split', 'From Chanda Beats' in st and 'artist K375' in st and 'ZAMI K125' in st, st)
-        check('row says when it was ordered / approved', 'Ordered' in st and 'Approved ' in st and '2026' in st, st)
+        check('row says when it was approved (and no empty "Ordered —" when no order date is recorded)', 'Approved ' in st and '2026' in st and 'Ordered' not in st, st)
         beat = rows(p).filter(has_text='ZL-TEST0001'); bt = beat.inner_text().replace('\n', ' ')
         check('beat sale shows tier, license ID and its producer', all(x in bt for x in ['Night Drive Beat', 'Beat', 'Premium lease', 'K120', 'From Mwaka', 'artist K90', 'ZAMI K30']), bt)
         guest = rows(p).filter(has_text='Guest (no account)')
@@ -60,7 +60,7 @@ def run():
         check('clearing the search shows everything again', rows(p).count() == 5)
         seg(p, 'Rejected purchases')
         rt = rows(p).first.inner_text().replace('\n', ' ')
-        check('rejected purchases are listed with a Rejected label', rows(p).count() == 1 and all(x in rt for x in ['Paid Groove', 'Rejected', 'K20', 'ORD-REJ1', '+260974444444']) and '1 rejected purchase' in p.locator('#tab-sales .sl-summary').inner_text(), rt)
+        check('rejected purchases are listed with a Rejected label', rows(p).count() == 1 and all(x in rt for x in ['Paid Groove', 'Rejected', 'K20', 'ORD-REJ1', '+260974444444', 'Ordered ']) and '1 rejected purchase' in p.locator('#tab-sales .sl-summary').inner_text(), rt)
         seg(p, 'Rejected uploads')
         check('rejected uploads: explains the SQL step when it has not been run', 'not being recorded yet' in p.locator('#tab-sales').inner_text() and 'upload-rejections.sql' in p.locator('#tab-sales').inner_text())
         # rejecting still works without the SQL

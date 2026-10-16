@@ -1,6 +1,7 @@
 // Adapter view generated from legacy/original/balance.html (tools/convert-page.mjs).
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
+import { createArtistSales } from '../ui/artist-sales.js';
 
 export const title = "My Balance — Music Platform";
 export const css = 'css/views/balance.css';
@@ -37,7 +38,7 @@ export const markup = `<div class="wrap">
 
     <div class="stats-grid">
       <div class="stat-tile"><p class="stat-value" id="stat-live">–</p><p class="stat-label">Live uploads</p></div>
-      <div class="stat-tile"><p class="stat-value" id="stat-sold">–</p><p class="stat-label">Beats sold</p></div>
+      <div class="stat-tile"><p class="stat-value" id="stat-sold">–</p><p class="stat-label">Items sold</p></div>
     </div>
 
     <div class="card">
@@ -50,6 +51,8 @@ export const markup = `<div class="wrap">
 export async function mount({ supabase, timers: __t, document }) {
   const gate = document.getElementById('gate');
   const content = document.getElementById('content');
+  // "Sales by item": totals, this month, best seller, per-item licenses and each sale (app/ui/artist-sales.js)
+  const artistSales = createArtistSales({ supabase, container: document.getElementById('sales-list'), escapeHtml });
 
   function normalizeZambianPhone(raw) {
     const cleaned = raw.trim().replace(/[\s\-()]/g, '');
@@ -170,34 +173,8 @@ export async function mount({ supabase, timers: __t, document }) {
     ]);
     document.getElementById('stat-live').textContent = (liveTracks || 0) + (liveBeats || 0);
 
-    // Sales by item
-    const salesByItem = new Map();
-    const titleMap = new Map();
-    result.tracks.forEach(t => titleMap.set(`track-${t.id}`, t.title));
-    result.beats.forEach(b => titleMap.set(`beat-${b.id}`, b.title));
-    [...result.trackSales.map(s => ({ ...s, type: 'track' })), ...result.beatSales.map(s => ({ ...s, type: 'beat' }))].forEach(sale => {
-      const key = `${sale.type}-${sale.item_id}`;
-      const existing = salesByItem.get(key) || { count: 0, total: 0 };
-      existing.count += 1;
-      existing.total += Number(sale.amount);
-      salesByItem.set(key, existing);
-    });
-
-    const salesList = document.getElementById('sales-list');
-    if (salesByItem.size === 0) {
-      salesList.innerHTML = '<p class="empty-state" style="padding:10px 0;">No sales yet.</p>';
-    } else {
-      salesList.innerHTML = '';
-      for (const [key, stats] of salesByItem) {
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.innerHTML = `
-          <span class="name">${escapeHtml(titleMap.get(key) || 'Unknown')}</span>
-          <span class="sold">${stats.count} sold · K${stats.total}</span>
-        `;
-        salesList.appendChild(row);
-      }
-    }
+    // Sales by item (richer view: app/ui/artist-sales.js)
+    await artistSales.load(currentUser.id);
   }
 
   function escapeHtml(str) {

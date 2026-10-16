@@ -1,0 +1,31 @@
+/* Artist balance page -> "Sales by item". Prefixed .as- so it cannot collide with the page's own styles. */
+#zs-view .as-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 12px; }
+#zs-view .as-tile { background: var(--surface-alt, #eef0ed); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+#zs-view .as-tile b { display: block; font-size: 17px; color: var(--ink, #14181c); word-break: break-word; }
+#zs-view .as-tile span { font-size: 11px; color: var(--ink-muted, #5b6560); }
+#zs-view .as-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+#zs-view .as-chip { appearance: none; border: 1px solid var(--border, #dfe2de); background: var(--surface, #fff); color: var(--ink, #14181c); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; width: auto; margin: 0; }
+#zs-view .as-chip.is-on { background: var(--ink, #14181c); color: var(--surface, #fff); border-color: var(--ink, #14181c); }
+#zs-view .as-select { font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--border, #dfe2de); border-radius: 999px; background: var(--surface, #fff); color: var(--ink, #14181c); width: auto; margin: 0; }
+#zs-view .as-item { border-top: 1px solid var(--border, #dfe2de); }
+#zs-view .as-item.is-empty { opacity: .62; }
+#zs-view .as-head { appearance: none; display: block; width: 100%; text-align: left; background: none; border: 0; padding: 12px 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
+#zs-view .as-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#zs-view .as-title { font-weight: 700; font-size: 14px; word-break: break-word; }
+#zs-view .as-badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: var(--surface-alt, #eef0ed); color: var(--ink-muted, #5b6560); }
+#zs-view .as-badge.is-live { background: #e3f4ea; color: #1c8a4c; }
+#zs-view .as-badge.is-wait { background: #fff3d6; color: #8a5a00; }
+#zs-view .as-chev { margin-left: auto; color: var(--ink-muted, #5b6560); font-size: 12px; }
+#zs-view .as-nums { display: block; font-size: 13px; margin-top: 4px; }
+#zs-view .as-sub { display: block; font-size: 12px; color: var(--ink-muted, #5b6560); margin-top: 3px; line-height: 1.4; }
+#zs-view .as-sub.is-wait { color: #8a5a00; }
+#zs-view .as-sales { padding: 0 0 12px; }
+#zs-view .as-sales[hidden] { display: none; }
+#zs-view .as-sale { background: var(--surface-alt, #eef0ed); border-radius: 10px; padding: 9px 11px; margin-top: 6px; font-size: 13px; }
+#zs-view .as-sale.is-wait { background: #fff8e6; }
+#zs-view .as-sale-top { display: flex; justify-content: space-between; gap: 8px; }
+#zs-view .as-sale-line { margin-top: 3px; line-height: 1.4; word-break: break-word; }
+#zs-view .as-sale-line.muted { font-size: 12px; color: var(--ink-muted, #5b6560); }
+#zs-view .as-sale code { font-size: 12px; background: var(--surface, #fff); border-radius: 4px; padding: 1px 5px; }
+#zs-view .as-bad { color: #b3261e; font-weight: 700; }
+#zs-view .as-note { font-size: 13px; color: var(--ink-muted, #5b6560); padding: 10px 0; margin: 0; }

@@ -13,7 +13,7 @@ export async function ensureNames(ownerIds) {
 }
 export const artistName = (id) => nameMap.get(id) || '';
 
-export const PAGE_SIZE = 20;
+export const PAGE_SIZE = 12;
 
 export async function fetchFeedPage({ genre = 'all', q = '', artistId = null, offset = 0, limit = PAGE_SIZE }) {
   let query = supabase.from('browse_feed').select('*');

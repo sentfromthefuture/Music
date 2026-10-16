@@ -195,7 +195,7 @@ def run():
         # infinite scroll: only the first page loads; scrolling to the end brings the next page without a click
         p.goto(BASE + 'browse.html'); p.wait_for_selector('#grid .zs-card'); time.sleep(0.8)
         first = p.locator('#grid .zs-card').count()
-        check('browse loads only the first page at first', 0 < first <= 20, str(first))
+        check('browse loads only the first page at first', 0 < first <= 12, str(first))
         p.evaluate("window.scrollTo(0, document.body.scrollHeight)"); time.sleep(1.2)
         p.evaluate("window.scrollTo(0, document.body.scrollHeight)"); time.sleep(1.2)
         check('scrolling down loads the next page automatically', p.locator('#grid .zs-card').count() > first, f"{first} -> {p.locator('#grid .zs-card').count()}")

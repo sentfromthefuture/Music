@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /login.html
+Disallow: /account.html
+Disallow: /my-uploads.html
+Disallow: /balance.html
+Disallow: /checkout.html
+Disallow: /upload.html
+
+Sitemap: https://zami.site/sitemap.xml

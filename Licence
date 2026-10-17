@@ -1,74 +1,77 @@
 PROPRIETARY SOFTWARE LICENSE
+ZAMI
 
-Copyright (c) 2026 The Copyright Owner.
+Copyright (c) 2026 Geoffrey Musweu.
 All Rights Reserved.
 
 1. OWNERSHIP
 
-All original source code, software, designs, documentation,
-and other materials in this repository are protected by
-applicable copyright laws.
+This repository contains proprietary software developed
+and/or owned by Geoffrey Musweu and associated with
+ZAMI ("the Software").
 
-The copyright owner retains all rights to these materials.
+All original source code, designs, documentation, and
+other materials owned by the copyright owner are
+protected by applicable copyright laws.
 
-2. RESTRICTIONS
+All rights in the Software are reserved by the
+copyright owner, except where expressly granted in
+writing.
+
+2. RESTRICTIONS ON USE
 
 Unless expressly authorised in writing by the copyright
 owner, no person or organisation may:
 
-(a) Copy, reproduce, or redistribute the source code or
-    substantial portions of it.
+(a) Copy, reproduce, or redistribute the Software or
+    substantial portions of its source code.
 
-(b) Modify, adapt, translate, or create derivative works
-    from the software.
+(b) Modify, adapt, translate, or create derivative
+    works from the Software.
 
-(c) Incorporate the software or substantial portions of
-    its code into another application, website, or product.
+(c) Incorporate the Software or substantial portions
+    of its source code into another application,
+    website, or commercial product.
 
-(d) Sell, sublicense, rent, lease, or commercially exploit
-    the software or any part of it.
+(d) Sell, sublicense, rent, lease, or commercially
+    exploit the Software.
 
-(e) Use the software or its source code to develop,
+(e) Use the Software or its source code to develop,
     replicate, or operate a competing product.
 
-(f) Publish, distribute, or provide copies of the source
-    code to third parties without written permission.
+(f) Publish, distribute, or provide copies of the
+    source code to third parties.
 
-3. LIMITED VIEWING PERMISSION
+(g) Remove or alter copyright notices or proprietary
+    notices contained in the Software.
 
-The repository is publicly accessible for viewing and
-inspection purposes only, subject to GitHub's applicable
-terms and the rights of the copyright owner.
+3. PUBLIC REPOSITORY ACCESS
 
-Public accessibility does not constitute permission to
-reuse, modify, redistribute, or commercially exploit
-the software.
+Public availability of this repository on GitHub does
+not constitute a general licence to copy, modify,
+redistribute, or commercially exploit the Software.
 
-4. WRITTEN PERMISSION
+Viewing the repository is permitted subject to
+applicable platform terms and law.
 
-Any permission to use, reproduce, modify, distribute,
-or commercially exploit the software must be expressly
-granted in writing by the copyright owner.
+Nothing in this section overrides permissions that
+GitHub's applicable terms grant to its users.
 
-Permission may be granted subject to separate contractual
-terms.
+4. AUTHORISATION
+
+Any permission to reproduce, modify, distribute,
+commercially exploit, or otherwise use the Software
+beyond permitted viewing must be expressly granted
+in writing by the copyright owner or an authorised
+representative.
+
+Additional contractual terms may apply to any
+authorised use.
 
 5. THIRD-PARTY MATERIALS
 
 Third-party libraries, dependencies, fonts, images,
-and other materials remain subject to their respective
-copyrights and licence terms. This licence does not
-override those terms.
+and other materials may be subject to separate
+copyrights and licence terms.
 
-6. NO WARRANTY
-
-To the extent permitted by applicable law, the software
-is provided without warranties of any kind.
-
-7. RESERVATION OF RIGHTS
-
-All rights not expressly granted are reserved by the
-copyright owner.
-
-Unauthorised use may result in legal action where
-permitted by applicable law.
+This licence does not

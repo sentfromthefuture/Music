@@ -2,6 +2,7 @@
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { tierLabel } from '../lib/licenses.js';
+import { createPager, revealList, cleanTerm, LIST_PAGE } from '../ui/paging.js';
 import { songLicenseLabel, durationLabel, territoryLabel } from '../lib/song-licenses.js';
 import { createSalesView } from '../ui/admin-sales.js';
 
@@ -164,75 +165,112 @@ export async function mount({ supabase, timers: __t, document }) {
 
   // --- Search (filters cards in the currently visible tab, by matching any text in the card) ---
   const searchInput = document.getElementById('search-input');
+  // Lists fetched from the database 12 at a time are searched in the database; the small queues filter in the page.
+  const searchPagers = () => ({ 'withdrawal-history': historyPager, live: livePager, 'taken-down': takenDownPager, users: usersPager });
   function applySearchFilter() {
     const term = searchInput.value.trim().toLowerCase();
     const activeTab = document.querySelector('.tab-btn.active');
     if (!activeTab) return;
     if (activeTab.dataset.tab === 'sales') { if (salesView) salesView.setSearch(searchInput.value); return; } // the sales list does its own filtering
+    if (searchPagers()[activeTab.dataset.tab]) return; // server-paged: handled in the input listener below
     const container = document.getElementById(`tab-${activeTab.dataset.tab}`);
     if (!container) return;
+    if (term && container._revealAll) container._revealAll(); // make sure unrevealed cards are searched too
     container.querySelectorAll('.card').forEach(card => {
       const matches = !term || card.textContent.toLowerCase().includes(term);
       card.classList.toggle('hidden', !matches);
     });
   }
-  searchInput.addEventListener('input', applySearchFilter);
+  let searchTimer = null;
+  searchInput.addEventListener('input', () => {
+    const tab = (document.querySelector('.tab-btn.active') || {}).dataset?.tab;
+    const pager = searchPagers()[tab];
+    if (!pager) { applySearchFilter(); return; }
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => pager.reload(searchInput.value), 300);
+  });
 
-  // --- Withdrawal History (paid) ---
-  async function loadWithdrawalHistory() {
-    const container = document.getElementById('tab-withdrawal-history');
-    container.innerHTML = 'Loading…';
-
-    const { data: withdrawals } = await supabase.from('withdrawals').select('*').eq('status', 'paid').order('paid_at', { ascending: false });
-
-    container.innerHTML = '';
-    if (!withdrawals || withdrawals.length === 0) {
-      container.appendChild(cardShell('<p class="empty-state" style="margin:0;padding:0;">No withdrawals paid yet.</p>'));
-      return;
-    }
-
-    const artistIds = [...new Set(withdrawals.map(w => w.artist_id))];
-    const { data: artists } = artistIds.length
-      ? await supabase.from('profiles').select('id, display_name').in('id', artistIds)
-      : { data: [] };
-    const nameMap = new Map((artists || []).map(a => [a.id, a.display_name || 'Unnamed']));
-
-    for (const w of withdrawals) {
-      const paidDate = w.paid_at ? new Date(w.paid_at).toLocaleString() : '';
-      const card = cardShell(`
-        <p class="title">K${payoutOf(w)} paid (75% of K${w.amount}) — ${escapeHtml(nameMap.get(w.artist_id) || 'Unknown')}</p>
-        <p class="meta">Sent to ${escapeHtml(w.momo_number)} · ${escapeHtml(paidDate)}</p>
-        <div class="wd-items"><p class="meta">Loading items…</p></div>
-      `);
-      breakdownHtml(w).then(html => { card.querySelector('.wd-items').innerHTML = html; })
-        .catch(() => { card.querySelector('.wd-items').innerHTML = ''; });
-      container.appendChild(card);
-    }
-    applySearchFilter();
-  }
+  // --- Withdrawal History (paid): 12 at a time, searched in the database ---
+  const profileIdsLike = async (t) => {
+    const { data } = await supabase.from('profiles').select('id').ilike('display_name', `%${t}%`).limit(50);
+    return (data || []).map(r => r.id);
+  };
+  const historyPager = createPager({
+    container: document.getElementById('tab-withdrawal-history'),
+    emptyNode: (t) => cardShell(`<p class="empty-state" style="margin:0;padding:0;">${t ? 'No paid withdrawals match your search.' : 'No withdrawals paid yet.'}</p>`),
+    async fetchPage({ cursor, limit, term }) {
+      const off = cursor.off || 0;
+      let q = supabase.from('withdrawals').select('*').eq('status', 'paid');
+      const t = cleanTerm(term);
+      if (t) {
+        const parts = [`momo_number.ilike.%${t}%`];
+        const ids = await profileIdsLike(t);
+        if (ids.length) parts.push(`artist_id.in.(${ids.join(',')})`);
+        if (/^\d+$/.test(t)) parts.push(`amount.eq.${t}`);
+        q = q.or(parts.join(','));
+      }
+      const { data, error } = await q.order('paid_at', { ascending: false }).range(off, off + limit - 1);
+      if (error) throw error;
+      const rows = data || [];
+      cursor.off = off + rows.length;
+      return { rows, hasMore: rows.length === limit };
+    },
+    async renderRows(withdrawals) {
+      const artistIds = [...new Set(withdrawals.map(w => w.artist_id))];
+      const { data: artists } = artistIds.length ? await supabase.from('profiles').select('id, display_name').in('id', artistIds) : { data: [] };
+      const nameMap = new Map((artists || []).map(a => [a.id, a.display_name || 'Unnamed']));
+      return withdrawals.map((w) => {
+        const paidDate = w.paid_at ? new Date(w.paid_at).toLocaleString() : '';
+        const card = cardShell(`
+          <p class="title">K${payoutOf(w)} paid (75% of K${w.amount}) — ${escapeHtml(nameMap.get(w.artist_id) || 'Unknown')}</p>
+          <p class="meta">Sent to ${escapeHtml(w.momo_number)} · ${escapeHtml(paidDate)}</p>
+          <div class="wd-items"><p class="meta">Loading items…</p></div>
+        `);
+        breakdownHtml(w).then(html => { card.querySelector('.wd-items').innerHTML = html; })
+          .catch(() => { card.querySelector('.wd-items').innerHTML = ''; });
+        return card;
+      });
+    },
+  });
+  const loadWithdrawalHistory = () => historyPager.reload(searchInput.value);
 
   // --- Taken Down (removed content, with restore) ---
-  async function loadTakenDown() {
-    const container = document.getElementById('tab-taken-down');
-    container.innerHTML = 'Loading…';
+  // Tracks and beats live in two tables, so each batch takes the next few of each (12 in total) and merges them.
+  function itemPager({ tabId, status, orderCol, emptyText, emptySearchText, renderCard }) {
+    const sources = [['tracks', 'track'], ['beats', 'beat']];
+    return createPager({
+      container: document.getElementById(tabId),
+      emptyNode: (t) => cardShell(`<p class="empty-state" style="margin:0;padding:0;">${t ? emptySearchText : emptyText}</p>`),
+      async fetchPage({ cursor, limit, term }) {
+        cursor.done = cursor.done || {};
+        const active = sources.filter(([tb]) => !cursor.done[tb]).length;
+        const per = Math.max(1, Math.floor(limit / Math.max(1, active))); // once one table is exhausted the other fills the whole batch
+        const t = cleanTerm(term);
+        const ids = t ? await profileIdsLike(t) : [];
+        cursor.off = cursor.off || { tracks: 0, beats: 0 };
+        cursor.done = cursor.done || {};
+        const batches = await Promise.all(sources.map(async ([table, itemType]) => {
+          if (cursor.done[table]) return [];
+          let q = supabase.from(table).select('*').eq('status', status);
+          if (t) q = q.or([`title.ilike.%${t}%`, `genre.ilike.%${t}%`, ...(ids.length ? [`owner_id.in.(${ids.join(',')})`] : [])].join(','));
+          const { data, error } = await q.order(orderCol, { ascending: false }).range(cursor.off[table], cursor.off[table] + per - 1);
+          if (error) throw error;
+          const rows = data || [];
+          cursor.off[table] += rows.length;
+          if (rows.length < per) cursor.done[table] = true;
+          return rows.map(r => ({ ...r, itemType }));
+        }));
+        const rows = batches.flat().sort((x, y) => new Date(y[orderCol] || 0) - new Date(x[orderCol] || 0));
+        return { rows, hasMore: !(cursor.done.tracks && cursor.done.beats) };
+      },
+      renderRows: (rows) => rows.map(renderCard),
+    });
+  }
 
-    const [{ data: tracks }, { data: beats }] = await Promise.all([
-      supabase.from('tracks').select('*').eq('status', 'removed'),
-      supabase.from('beats').select('*').eq('status', 'removed'),
-    ]);
-
-    const items = [
-      ...(tracks || []).map(t => ({ ...t, itemType: 'track' })),
-      ...(beats || []).map(b => ({ ...b, itemType: 'beat' })),
-    ].sort((a, b) => new Date(b.removed_at || 0) - new Date(a.removed_at || 0));
-
-    container.innerHTML = '';
-    if (items.length === 0) {
-      container.appendChild(cardShell('<p class="empty-state" style="margin:0;padding:0;">Nothing taken down.</p>'));
-      return;
-    }
-
-    for (const item of items) {
+  const takenDownPager = itemPager({
+    tabId: 'tab-taken-down', status: 'removed', orderCol: 'removed_at',
+    emptyText: 'Nothing taken down.', emptySearchText: 'Nothing taken down matches your search.',
+    renderCard(item) {
       const removedDate = item.removed_at ? new Date(item.removed_at).toLocaleString() : 'unknown time';
       const card = cardShell(`
         <p class="title">${escapeHtml(item.title)} <span style="font-weight:400;color:var(--ink-muted);">(${item.itemType})</span></p>
@@ -249,10 +287,10 @@ export async function mount({ supabase, timers: __t, document }) {
         card.remove();
         loadStats();
       });
-      container.appendChild(card);
-    }
-    applySearchFilter();
-  }
+      return card;
+    },
+  });
+  const loadTakenDown = () => takenDownPager.reload(searchInput.value);
 
   function escapeHtml(str) {
     const div = document.createElement('div');
@@ -304,6 +342,7 @@ export async function mount({ supabase, timers: __t, document }) {
       .in('item_id', items.map(i => String(i.id)));
     const fpMap = new Map((fpRows || []).map(r => [`${r.item_type}-${r.item_id}`, r]));
 
+    const nodes = [];
     for (const item of items) {
       const fp = fpMap.get(`${item.itemType}-${item.id}`);
       let dupHtml = '<p class="fp-note">⏳ Duplicate check not finished yet. Approve unlocks when it is done. Reload the page in a minute.</p>';
@@ -342,8 +381,9 @@ export async function mount({ supabase, timers: __t, document }) {
         card.remove();
         loadStats();
       });
-      container.appendChild(card);
+      nodes.push(card);
     }
+    revealList(container, nodes);
     applySearchFilter();
   }
 
@@ -380,6 +420,7 @@ export async function mount({ supabase, timers: __t, document }) {
       return;
     }
 
+    const nodes = [];
     for (const purchase of purchases) {
       const item = itemMap.get(`${purchase.item_type}-${purchase.item_id}`) || { title: '(item not found)', path: null };
       const card = cardShell(`
@@ -435,8 +476,9 @@ export async function mount({ supabase, timers: __t, document }) {
         card.remove();
         loadStats();
       });
-      container.appendChild(card);
+      nodes.push(card);
     }
+    revealList(container, nodes);
     applySearchFilter();
   }
 
@@ -506,6 +548,7 @@ export async function mount({ supabase, timers: __t, document }) {
       return;
     }
 
+    const nodes = [];
     for (const w of withdrawals) {
       const card = cardShell(`
         <p class="title">K${w.amount} requested</p>
@@ -527,33 +570,17 @@ export async function mount({ supabase, timers: __t, document }) {
         card.remove();
         loadStats();
       });
-      container.appendChild(card);
+      nodes.push(card);
     }
+    revealList(container, nodes);
     applySearchFilter();
   }
 
   // --- Tab 4: Live Content (approved tracks + beats, with take-down) ---
-  async function loadLive() {
-    const container = document.getElementById('tab-live');
-    container.innerHTML = 'Loading…';
-
-    const [{ data: tracks }, { data: beats }] = await Promise.all([
-      supabase.from('tracks').select('*').eq('status', 'approved'),
-      supabase.from('beats').select('*').eq('status', 'approved'),
-    ]);
-
-    const items = [
-      ...(tracks || []).map(t => ({ ...t, itemType: 'track' })),
-      ...(beats || []).map(b => ({ ...b, itemType: 'beat' })),
-    ];
-
-    container.innerHTML = '';
-    if (items.length === 0) {
-      container.appendChild(cardShell('<p class="empty-state" style="margin:0;padding:0;">Nothing live yet.</p>'));
-      return;
-    }
-
-    for (const item of items) {
+  const livePager = itemPager({
+    tabId: 'tab-live', status: 'approved', orderCol: 'created_at',
+    emptyText: 'Nothing live yet.', emptySearchText: 'Nothing live matches your search.',
+    renderCard(item) {
       const priceLabel = item.itemType === 'track' ? (item.is_free ? 'Free' : `K${item.price}`) : `K${item.price}`;
       const card = cardShell(`
         <p class="title">${escapeHtml(item.title)} <span style="font-weight:400;color:var(--ink-muted);">(${item.itemType})</span></p>
@@ -571,10 +598,10 @@ export async function mount({ supabase, timers: __t, document }) {
         card.remove();
         loadStats();
       });
-      container.appendChild(card);
-    }
-    applySearchFilter();
-  }
+      return card;
+    },
+  });
+  const loadLive = () => livePager.reload(searchInput.value);
 
   // --- Complaints (buyer "Report a problem" messages; needs supabase/complaints.sql) ---
   async function loadComplaints() {
@@ -604,6 +631,7 @@ export async function mount({ supabase, timers: __t, document }) {
     const momoPhone = new Map((producers || []).map(a => [a.id, a.momo_number || '']));
     const prodPhone = new Map(producerIds.map(id => [id, loginPhone.get(id) || momoPhone.get(id) || '']));
     const waLink = (num) => { const d = String(num).replace(/\D/g, ''); return d ? 'https://wa.me/' + (d.startsWith('0') ? '260' + d.slice(1) : d) : ''; };
+    const nodes = [];
     for (const r of [...rows].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1))) {
       const open = r.status !== 'resolved';
       const card = cardShell(`
@@ -623,8 +651,9 @@ export async function mount({ supabase, timers: __t, document }) {
         if (upErr) { alert(upErr.message); e.target.disabled = false; return; }
         loadComplaints();
       });
-      container.appendChild(card);
+      nodes.push(card);
     }
+    revealList(container, nodes);
     applySearchFilter();
   }
 
@@ -653,33 +682,32 @@ export async function mount({ supabase, timers: __t, document }) {
     return earned - withdrawn;
   }
 
-  async function loadUsers() {
-    const container = document.getElementById('tab-users');
-    container.innerHTML = 'Loading…';
-
-    const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-
-    container.innerHTML = '';
-    if (!profiles || profiles.length === 0) {
-      container.appendChild(cardShell('<p class="empty-state" style="margin:0;padding:0;">No users yet.</p>'));
-      return;
-    }
-
-    for (const p of profiles) {
+  const usersPager = createPager({
+    container: document.getElementById('tab-users'),
+    emptyNode: (t) => cardShell(`<p class="empty-state" style="margin:0;padding:0;">${t ? 'No users match your search.' : 'No users yet.'}</p>`),
+    async fetchPage({ cursor, limit, term }) {
+      const off = cursor.off || 0;
+      let q = supabase.from('profiles').select('*');
+      const t = cleanTerm(term);
+      if (t) q = q.or([`display_name.ilike.%${t}%`, `momo_number.ilike.%${t}%`, `role.ilike.%${t}%`, ...(/admin/i.test(t) ? ['is_admin.eq.true'] : [])].join(','));
+      const { data, error } = await q.order('created_at', { ascending: false }).range(off, off + limit - 1);
+      if (error) throw error;
+      const rows = data || [];
+      cursor.off = off + rows.length;
+      return { rows, hasMore: rows.length === limit };
+    },
+    renderRows: (profiles) => profiles.map((p) => {
       const card = cardShell(`
         <p class="title">${escapeHtml(p.display_name || 'Unnamed')} ${p.is_admin ? '<span class="admin-tag">(admin)</span>' : ''}</p>
         <p class="meta">${escapeHtml(p.role)}${p.momo_number ? ' · MoMo: ' + escapeHtml(p.momo_number) : ''}</p>
         <p class="meta balance-line">${p.role === 'artist' ? 'Loading balance…' : ''}</p>
         ${p.is_admin ? '' : '<div class="row-actions"><button class="reject delete-user-btn" style="flex:none;width:100%;">Delete account</button></div>'}
       `);
-      container.appendChild(card);
-
       if (p.role === 'artist') {
         computeArtistBalance(p.id).then(balance => {
           card.querySelector('.balance-line').textContent = `Balance: K${balance}`;
         });
       }
-
       const deleteBtn = card.querySelector('.delete-user-btn');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
@@ -707,8 +735,9 @@ export async function mount({ supabase, timers: __t, document }) {
           loadStats();
         });
       }
-    }
-    applySearchFilter();
-  }
+      return card;
+    }),
+  });
+  const loadUsers = () => usersPager.reload(searchInput.value);
 
 }

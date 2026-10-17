@@ -10,12 +10,14 @@ const FILTERS = [['all', 'All'], ['track', 'Songs'], ['beat', 'Beats'], ['licens
 const SORTS = [['revenue', 'Most revenue'], ['sold', 'Most sold'], ['latest', 'Latest sale']];
 const money = (n) => `K${Math.round(Number(n) || 0).toLocaleString('en-GB')}`;
 const earn = (n) => Math.round((Number(n) || 0) * SHARE);
+import { autoMore, moreButtonHtml, LIST_PAGE } from './paging.js';
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
 
 // opts: { supabase, container, escapeHtml }
 export function createArtistSales({ supabase, container, escapeHtml: esc }) {
   let model = null, failed = false;
-  const view = { type: 'all', sort: 'revenue' };
+  let moreAuto = null;
+  const view = { type: 'all', sort: 'revenue' , shown: LIST_PAGE };
   const open = new Set();
 
   async function purchasesFor(type, ids, cols) {
@@ -134,15 +136,19 @@ export function createArtistSales({ supabase, container, escapeHtml: esc }) {
       </div>
       <div class="as-controls">${FILTERS.map(([k, l]) => `<button type="button" class="as-chip${view.type === k ? ' is-on' : ''}" data-type="${k}">${l}</button>`).join('')}
         <select class="as-select" data-sort aria-label="Sort items">${SORTS.map(([k, l]) => `<option value="${k}"${view.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
-      ${list.length ? list.map(itemHtml).join('') : '<p class="as-note">Nothing here.</p>'}`;
+      ${list.length ? list.slice(0, view.shown).map(itemHtml).join('') : '<p class="as-note">Nothing here.</p>'}${list.length > view.shown ? moreButtonHtml(`Show more (${list.length - view.shown} left)`) : ''}`;
+    if (moreAuto) moreAuto.stop();
+    const moreBtn = container.querySelector('[data-more]');
+    moreAuto = moreBtn ? autoMore(moreBtn, () => moreBtn.click()) : null;
   }
 
   container.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-type]'); const head = e.target.closest('[data-toggle]');
-    if (chip && container.contains(chip)) { view.type = chip.dataset.type; render(); return; }
+    const chip = e.target.closest('[data-type]'); const head = e.target.closest('[data-toggle]'); const more = e.target.closest('[data-more]');
+    if (more && container.contains(more)) { view.shown += LIST_PAGE; render(); return; }
+    if (chip && container.contains(chip)) { view.type = chip.dataset.type; view.shown = LIST_PAGE; render(); return; }
     if (head && container.contains(head)) { const key = head.closest('.as-item').dataset.key; open.has(key) ? open.delete(key) : open.add(key); render(); }
   });
-  container.addEventListener('change', (e) => { if (e.target.matches('[data-sort]')) { view.sort = e.target.value; render(); } });
+  container.addEventListener('change', (e) => { if (e.target.matches('[data-sort]')) { view.sort = e.target.value; view.shown = LIST_PAGE; render(); } });
 
   return { load };
 }

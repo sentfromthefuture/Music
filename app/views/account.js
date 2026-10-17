@@ -5,6 +5,7 @@ import { licensingEnabled } from '../lib/licenses.js';
 import { addLicenseControls } from '../ui/license-controls.js';
 import { addSongLicenseControls } from '../ui/song-license-controls.js';
 import { complaintsEnabled, mountProducerComplaints } from '../ui/complaints.js';
+import { revealList } from '../ui/paging.js';
 
 export const title = "My Account — Music Platform";
 export const css = 'css/views/account.css';
@@ -263,6 +264,7 @@ export async function mount({ supabase, timers: __t, document }) {
 
     container.innerHTML = '<div class="list-card"></div>';
     const listCard = container.querySelector('.list-card');
+    const rows = [];
     for (const d of downloads) {
       const track = trackMap.get(d.track_id);
       if (!track) continue;
@@ -275,9 +277,10 @@ export async function mount({ supabase, timers: __t, document }) {
         <div><p class="name">${escapeHtml(track.title)}</p><p class="sub">${new Date(d.downloaded_at).toLocaleDateString()}</p></div>
         <a class="mini-btn" href="${publicUrl}" download>Download</a>
       `;
-      listCard.appendChild(row);
+      rows.push(row);
     }
-    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No downloads yet.</p>';
+    if (rows.length === 0) container.innerHTML = '<p class="empty-state">No downloads yet.</p>';
+    else revealList(listCard, rows);
   }
 
   async function loadPurchases(userId) {
@@ -301,6 +304,7 @@ export async function mount({ supabase, timers: __t, document }) {
 
     container.innerHTML = '<div class="list-card"></div>';
     const listCard = container.querySelector('.list-card');
+    const rows = [];
     for (const purchase of purchases) {
       const item = itemMap.get(`${purchase.item_type}-${purchase.item_id}`);
       if (!item) continue;
@@ -327,11 +331,12 @@ export async function mount({ supabase, timers: __t, document }) {
         e.target.textContent = 'Get link';
         e.target.disabled = false;
       });
-      listCard.appendChild(row);
+      rows.push(row);
       if (purchase.song_license_tier) addSongLicenseControls({ row, purchase, item });
       else if (lic && purchase.license_id) addLicenseControls({ supabase, row, purchase, item });
     }
-    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
+    if (rows.length === 0) container.innerHTML = '<p class="empty-state">No purchases yet.</p>';
+    else revealList(listCard, rows);
   }
 
   async function loadFavorites(userId) {
@@ -359,6 +364,7 @@ export async function mount({ supabase, timers: __t, document }) {
     (beatItems || []).forEach(b => itemMap.set(`beat-${b.id}`, { ...b, itemType: 'beat' }));
 
     favGrid.innerHTML = '';
+    const favCards = [];
     for (const fav of favs) {
       const item = itemMap.get(`${fav.item_type}-${fav.item_id}`);
       if (!item) continue; // item may have been removed/deleted since favoriting
@@ -372,11 +378,11 @@ export async function mount({ supabase, timers: __t, document }) {
           <p class="fav-artist">${escapeHtml(nameMap.get(item.owner_id) || '')}</p>
         </div>
       `;
-      favGrid.appendChild(card);
+      favCards.push(card);
     }
-    if (favGrid.children.length === 0) {
+    if (favCards.length === 0) {
       favGrid.innerHTML = '<p class="empty-state">No favorites yet.</p>';
-    }
+    } else revealList(favGrid, favCards);
   }
 
   async function loadFollowing(userId) {
@@ -393,6 +399,7 @@ export async function mount({ supabase, timers: __t, document }) {
 
     container.innerHTML = '<div class="list-card"></div>';
     const listCard = container.querySelector('.list-card');
+    const rows = [];
     for (const f of follows) {
       const name = nameMap.get(f.artist_id);
       if (!name) continue; // artist profile may have been deleted since following
@@ -405,9 +412,10 @@ export async function mount({ supabase, timers: __t, document }) {
         <div><p class="name">${escapeHtml(name)}</p></div>
         <span class="mini-btn" style="pointer-events:none;">View →</span>
       `;
-      listCard.appendChild(row);
+      rows.push(row);
     }
-    if (listCard.children.length === 0) container.innerHTML = '<p class="empty-state">Not following anyone yet.</p>';
+    if (rows.length === 0) container.innerHTML = '<p class="empty-state">Not following anyone yet.</p>';
+    else revealList(listCard, rows);
   }
 
   document.getElementById('logout-btn').addEventListener('click', async () => {

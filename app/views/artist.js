@@ -1,4 +1,5 @@
 // Artist profile. Same data, follow/favourite behaviour and messages as the original artist.html.
+import { revealList } from '../ui/paging.js';
 import { h } from '../lib/dom.js';
 import { supabase, getUser } from '../lib/supabase.js';
 import { loadFavorites } from '../lib/favorites.js';
@@ -100,6 +101,6 @@ export async function mount(ctx) {
 
   grid.replaceChildren();
   if (!rows.length) grid.append(h('p', { class: 'empty-state' }, 'Nothing here yet.'));
-  else rows.forEach((item) => grid.append(itemCard(item, () => rows)));
+  else revealList(grid, rows.map((item) => itemCard(item, () => rows)));
   ctx.ready();
 }

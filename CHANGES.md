@@ -46,3 +46,10 @@ Items with no sales are listed greyed out. Buyers' phone numbers and payment SMS
 **Modified:** `app/views/balance.js` (uses the new module; the balance, withdrawal and payout logic is untouched; the "Beats sold" tile, which counted songs too, is now "Items sold"),
 `tests/stub-supabase.js`. **Tests:** `tests/e2e_artist_sales.py` (30 checks).
 
+
+## Lists load 12 at a time
+- **Shared helper** `app/ui/paging.js`: lists draw 12 items and load 12 more as you scroll near the bottom (a "Show more" button stays as a fallback).
+- **Admin**: Users, Withdrawal History, Live Content and Taken Down are fetched from Supabase 12 at a time and searched in the database. Pending Review, Purchases, Withdrawals and Complaints are small queues: 12 drawn first, search still checks every card. Purchased Items shows 12 at a time (its filters stay in the page).
+- **Other pages**: Library (downloads, purchases, favourites, following), Artist page, My Uploads and Balance "Sales by item" show 12 first.
+- Browse page size is 12 (`PAGE_SIZE` in `app/lib/api.js`).
+- Tests: `tests/e2e_paging.py`.

@@ -6,6 +6,7 @@ import { songLicensingEnabled } from '../lib/song-licenses.js';
 import { createSongLicenseForm } from '../ui/song-license-form.js';
 import { mountStemRequests } from '../ui/stem-requests.js';
 import { complaintsEnabled, mountProducerComplaints } from '../ui/complaints.js';
+import { revealList, LIST_PAGE } from '../ui/paging.js';
 
 export const title = "My Uploads — Music Platform";
 export const css = 'css/views/my-uploads.css';
@@ -173,11 +174,13 @@ export async function mount({ supabase, timers: __t, document }) {
   }
 
   function renderList() {
+    const keep = list._shownCount ? list._shownCount() : 0; // a live update re-renders: keep what was already scrolled through
     list.innerHTML = '';
     if (uploads.length === 0) {
       list.innerHTML = '<p class="empty-state">No uploads yet.</p>';
       return;
     }
+    const nodes = [];
     for (const item of uploads) {
       const cardEl = document.createElement('div');
       cardEl.className = 'card';
@@ -185,10 +188,11 @@ export async function mount({ supabase, timers: __t, document }) {
       cardEl.dataset.itemType = item.itemType;
       cardEl.innerHTML = cardHtml(item);
       wireCardActions(cardEl, item);
-      list.appendChild(cardEl);
+      nodes.push(cardEl);
       if (item.itemType === 'beat') licensingEnabled().then((on) => { if (on) mountStemsLinkEditor(cardEl, item); }).catch(() => {});
       if (item.itemType === 'track') songLicensingEnabled().then((on) => { if (on) mountSongLicenseEditor(cardEl, item); }).catch(() => {});
     }
+    revealList(list, nodes, { initial: Math.max(keep, LIST_PAGE) });
   }
 
   // Optional licenses for a song the artist already uploaded: add, change or stop offering them.

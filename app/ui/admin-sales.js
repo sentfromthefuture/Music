@@ -3,7 +3,8 @@
 import { loadCssOnce, tierLabel } from '../lib/licenses.js';
 import { songLicenseLabel, durationLabel, territoryLabel } from '../lib/song-licenses.js';
 
-const PAGE = 50;
+import { autoMore } from './paging.js';
+const PAGE = 12;
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
 const fmt = (d) => (d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 const money = (n) => `K${Math.round(Number(n) || 0).toLocaleString('en-GB')}`;
@@ -17,6 +18,7 @@ export function createSalesView({ supabase, container, escapeHtml: esc, artistSh
   loadCssOnce('app/css/admin-sales.css');
   let loaded = false, loading = false;
   let sales = [], rejected = [], uploads = [], uploadsMissing = false, loadError = '';
+  let moreAuto = null;
   const f = { seg: 'approved', type: 'all', date: 'all', term: '', shown: PAGE };
 
   async function fetchAll(build) {
@@ -163,6 +165,10 @@ export function createSalesView({ supabase, container, escapeHtml: esc, artistSh
     }
     container.innerHTML = `<div class="sl-chips">${chips(SEGMENTS, f.seg, 'seg', (k) => (loaded && !loading ? ` (${count[k]})` : ''))}</div>
       <div class="sl-filters">${chips(types, f.type, 'type')}<select class="sl-select" data-date aria-label="Date range">${DATES.map(([k, l]) => `<option value="${k}"${f.date === k ? ' selected' : ''}>${l}</option>`).join('')}</select><button type="button" class="sl-chip" data-refresh>Refresh</button></div>${body}`;
+    // load the next 12 automatically when the button nears the screen (it stays as a fallback)
+    if (moreAuto) moreAuto.stop();
+    const moreBtn = container.querySelector('[data-more]');
+    moreAuto = moreBtn ? autoMore(moreBtn, () => moreBtn.click()) : null;
   }
 
   container.addEventListener('click', (e) => {

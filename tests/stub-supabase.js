@@ -87,7 +87,16 @@ class Q {
   gte(c, v) { this.f.push((r) => r[c] >= v); return this; }
   lte(c, v) { this.f.push((r) => r[c] <= v); return this; }
   ilike(c, p) { const s = p.replace(/%/g, '').toLowerCase(); this.f.push((r) => String(r[c] ?? '').toLowerCase().includes(s)); return this; }
-  not() { return this; } or() { return this; } is(c, v) { this.f.push((r) => (r[c] ?? null) === v); return this; }
+  not() { return this; }
+  or(spec) { // supports col.ilike.%x%, col.eq.x and col.in.(a,b) joined by commas (enough for the admin searches)
+    const parts = []; let depth = 0, cur = '';
+    for (const ch of String(spec)) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; } else cur += ch; }
+    if (cur) parts.push(cur);
+    const tests = parts.map((p) => { const m = p.match(/^([^.]+)\.(ilike|eq|in)\.(.*)$/); if (!m) return () => true; const [, c, op, v] = m;
+      if (op === 'ilike') { const x = v.replace(/%/g, '').toLowerCase(); return (r) => String(r[c] ?? '').toLowerCase().includes(x); }
+      if (op === 'eq') return (r) => String(r[c]) === v;
+      const list = v.replace(/^\(|\)$/g, '').split(','); return (r) => list.some((x) => String(r[c]) === x); });
+    this.f.push((r) => tests.some((t) => t(r))); return this; } is(c, v) { this.f.push((r) => (r[c] ?? null) === v); return this; }
   order(c, o) { this.ord = [c, o?.ascending !== false]; return this; }
   range(a, b) { this.rng = [a, b]; return this; }
   limit(n) { this.lim = n; return this; }

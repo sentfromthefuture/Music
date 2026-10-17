@@ -116,6 +116,7 @@ def run():
         upd = p.evaluate("() => window.__calls.filter((c) => c === 'purchase_complaints:update').length")
         check('producer can mark a complaint fixed with a reply', upd == 1 and p.locator('.lic-req', has_text='Waiting for ZAMI').count() >= 1)
         check('producer sees the buyer complaint', 'stems link does not open' in ' '.join(p.locator('.lic-requests').all_inner_texts()) and 'Buyer complaints' in ' '.join(p.locator('.lic-requests').all_inner_texts()))
+        p.evaluate("() => { const l = document.getElementById('list'); if (l && l._revealAll) l._revealAll(); }")  # lists now draw 12 at a time
         check('exclusively sold beat is labelled', 'Sold exclusively' in p.locator('.card', has_text='Gone Exclusive').inner_text())
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 

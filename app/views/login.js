@@ -19,6 +19,7 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
     <button type="button" class="type-toggle-btn active" data-role="listener">I'm a Listener</button>
     <button type="button" class="type-toggle-btn" data-role="artist">I'm an Artist</button>
   </div>
+  <p class="sub" id="role-hint" style="margin:-4px 0 12px;font-size:12px;">Only used when you create a new account. If you already have one, we keep your existing account type.</p>
 
   <!-- Step 1: phone number -->
   <div id="phone-card" class="card">
@@ -41,7 +42,9 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
   <div id="success-card" class="card success-card hidden">
     <div class="check-circle"><svg viewBox="0 0 24 24"><polyline points="4 12 9 17 20 6"/></svg></div>
     <p>You're logged in.</p>
-    <button type="button" class="primary" id="go-to-upload-btn"><span>Continue</span></button>
+    <p class="sub" id="role-note" style="margin:-6px 0 12px;"></p>
+    <button type="button" class="primary" id="go-to-upload-btn"><span>Go to Browse</span></button>
+    <button type="button" class="link hidden" id="go-upload-secondary">Go to Upload</button>
   </div>
 </div>`;
 
@@ -198,22 +201,23 @@ export async function mount({ supabase, timers: __t, document }) {
   });
 
   document.getElementById('go-to-upload-btn').addEventListener('click', () => {
-    __navigate(document.getElementById('go-to-upload-btn').dataset.href || 'browse.html');
+    __navigate('browse.html');
+  });
+  document.getElementById('go-upload-secondary').addEventListener('click', () => {
+    __navigate('upload.html');
   });
 
+  // Everyone continues to Browse. Only artist accounts also get a shortcut to Upload,
+  // and the screen says which account type they are logged in as.
   function showSuccess(role) {
     phoneCard.classList.add('hidden');
     otpCard.classList.add('hidden');
+    document.getElementById('type-card').classList.add('hidden');
+    document.getElementById('role-hint').classList.add('hidden');
     successCard.classList.remove('hidden');
-    const goBtn = document.getElementById('go-to-upload-btn');
-    const label = goBtn.querySelector('span');
-    if (role === 'artist') {
-      label.textContent = 'Go to Upload';
-      goBtn.dataset.href = 'upload.html';
-    } else {
-      label.textContent = 'Go to Browse';
-      goBtn.dataset.href = 'browse.html';
-    }
+    const isArtist = role === 'artist';
+    document.getElementById('role-note').textContent = isArtist ? 'Logged in as an artist.' : 'Logged in as a listener.';
+    document.getElementById('go-upload-secondary').classList.toggle('hidden', !isArtist);
   }
 
 }

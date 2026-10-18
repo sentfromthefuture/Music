@@ -166,7 +166,7 @@ export function createClient() {
       onAuthStateChange: (cb) => { authSubs.add(cb); return { data: { subscription: { unsubscribe() { authSubs.delete(cb); } } } }; },
       signOut: () => { localStorage.removeItem('stub-user'); authSubs.forEach((cb) => cb('SIGNED_OUT', null)); return Promise.resolve({ error: null }); },
       signInWithOtp: (a) => { window.__rpc.push(['signInWithOtp', a]); return Promise.resolve({ data: {}, error: null }); },
-      verifyOtp: (a) => { if (a && a.phone === '+260975555555') { try { localStorage.setItem('stub-user', 'u3'); } catch {} } return Promise.resolve({ data: { user: curUser(), session: {} }, error: null }); },
+      verifyOtp: (a) => { if (a && a.phone === '+260975555555') { try { localStorage.setItem('stub-user', 'u3'); } catch {} } if (a && a.phone === '+260977000004') { try { localStorage.setItem('stub-user', 'u4'); } catch {} } if (a && a.phone === '+260976666666') { try { localStorage.setItem('stub-user', 'u1'); } catch {} } return Promise.resolve({ data: { user: curUser(), session: {} }, error: null }); },
     },
     storage: { from: (b) => ({
       getPublicUrl: (p, o) => ({ data: { publicUrl: pub(b, p) + (o?.download ? `?download=${encodeURIComponent(o.download)}` : '') } }),

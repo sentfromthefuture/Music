@@ -83,6 +83,8 @@ def main():
           T.tracks.push({ ...base, id: 3002, title: 'Mwaka Song', reference_number: 'TRK-B', upload_tags: { title: 'Mwaka Song', artist: 'Mwaka' } });
           T.tracks.push({ ...base, id: 3003, title: 'Quiet One', reference_number: 'TRK-C', upload_tags: {} });
           T.tracks.push({ ...base, id: 3004, title: 'Old Upload', reference_number: 'TRK-D' });
+          T.tracks.push({ ...base, id: 3006, title: 'Typed By User', reference_number: 'TRK-F', upload_tags: { title: 'Real Song Name', artist: 'Real Artist' } });
+          T.tracks.push({ ...base, id: 3007, title: 'Only Title Tag', reference_number: 'TRK-G', upload_tags: { title: 'Lonely Title' } });
           T.tracks.push({ ...base, id: 3005, title: 'Sneaky', reference_number: 'TRK-E', upload_tags: { title: '<img src=x onerror="window.__xss=1">', artist: '<script>window.__xss=1</script>' } }); }""")
         p.locator('.tab-btn[data-tab="review"]').click(); time.sleep(1.2)
         for _ in range(3): p.evaluate("window.scrollTo(0, document.body.scrollHeight)"); time.sleep(0.5)
@@ -94,10 +96,19 @@ def main():
         links = {a.inner_text(): a.get_attribute('href') for a in card('TRK-A').locator('a[target=_blank]').all()}
         check('one-tap Google, YouTube and MusicBrainz searches use the title and uploader',
               'google.com/search?q=' in links.get('Google', '') and 'Midnight' in links.get('Google', '') and 'youtube.com/results' in links.get('YouTube', '') and 'musicbrainz.org/search' in links.get('MusicBrainz', ''), str(links)[:300])
+        import urllib.parse as up
+        dec = lambda h: up.unquote_plus(h)
+        check('searches use the FILE tags (title and artist), not the uploader name', all('John Banda' in dec(v) for k, v in links.items() if k in ('Google', 'YouTube', 'MusicBrainz')) and not any('Mwaka' in dec(v) for v in links.values()), str({k: dec(v) for k, v in links.items()})[:300])
+        lf = {a.inner_text(): a.get_attribute('href') for a in card('TRK-F').locator('a[target=_blank]').all()}
+        check('when the listing title differs, links follow the file and not what the user typed', all('Real Song Name' in dec(v) and 'Real Artist' in dec(v) and 'Typed By User' not in dec(v) for v in lf.values()) and len(lf) >= 3, str({k: dec(v) for k, v in lf.items()})[:300])
+        check('the card says what is being searched and where it came from', 'Real Song Name' in card('TRK-F').inner_text() and "from the file's tags" in card('TRK-F').inner_text())
+        lg = {a.inner_text(): a.get_attribute('href') for a in card('TRK-G').locator('a[target=_blank]').all()}
+        check('a file with only a title tag searches just that title', 'Lonely Title' in dec(lg.get('Google', '')) and 'Mwaka' not in dec(lg.get('Google', '')) and 'Only Title Tag' not in dec(lg.get('Google', '')), dec(lg.get('Google', '')))
         check('a valid ISRC gets a direct MusicBrainz ISRC link', links.get('ISRC') == 'https://musicbrainz.org/isrc/ZMABC2600001', str(links.get('ISRC')))
         check('links open in a new tab without leaking the page', all(a.get_attribute('rel') == 'noopener noreferrer' for a in card('TRK-A').locator('a[target=_blank]').all()))
         check('no tags in the file is explained, not alarming', 'none found' in card('TRK-C').inner_text() and 'not a warning' in card('TRK-C').inner_text())
         check('older uploads say tags were not recorded but still get search links', 'not recorded' in card('TRK-D').inner_text() and card('TRK-D').locator('a[target=_blank]').count() >= 3)
+        check('with no tags the card falls back to the listing and says so', 'from the listing' in card('TRK-C').inner_text() and 'Quiet One' in dec(card('TRK-C').locator('a[target=_blank]').first.get_attribute('href')))
         check('HTML inside tags is shown as text and never runs', p.evaluate("() => !window.__xss") and '<script>' in card('TRK-E').inner_text())
         check('no JS errors (review card)', not e.errors, '; '.join(e.errors[:3])); e.close()
 

@@ -123,7 +123,7 @@ export function searchLinks({ title, artist, isrc }) {
   if (!q) return [];
   const e = encodeURIComponent;
   const links = [
-    { label: 'Google', href: `https://www.google.com/search?q=${e(`"${title || ''}" ${artist ? `"${artist}"` : ''}`.trim())}` },
+    { label: 'Google', href: `https://www.google.com/search?q=${e([title, artist].filter(Boolean).map((t) => `"${t}"`).join(' '))}` },
     { label: 'YouTube', href: `https://www.youtube.com/results?search_query=${e(q)}` },
     { label: 'MusicBrainz', href: `https://musicbrainz.org/search?query=${e(q)}&type=recording&method=indexed` },
   ];

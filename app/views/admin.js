@@ -361,13 +361,17 @@ export async function mount({ supabase, timers: __t, document }) {
       if (tags && tags.artist && who && !norm(tags.artist).includes(norm(who)) && !norm(who).includes(norm(tags.artist))) {
         warn = `<p class="meta" style="color:#b3261e;">The file's artist (${escapeHtml(tags.artist)}) differs from the uploader (${escapeHtml(who)}). It could be a stage name, so worth a look.</p>`;
       }
-      const links = searchLinks({ title: item.title, artist: who, isrc: tags && tags.isrc });
-      const tagLinks = tags && (tags.title || tags.artist) && (norm(tags.title) !== norm(item.title) || norm(tags.artist) !== norm(who))
-        ? searchLinks({ title: tags.title || item.title, artist: tags.artist || who, isrc: null }).slice(0, 1).map(l => ({ label: 'Google (file tags)', href: l.href })) : [];
-      const a = [...links, ...tagLinks].map(l => `<a href="${escapeHtml(l.href)}" target="_blank" rel="noopener noreferrer" style="color:#1e6feb;font-weight:600;text-decoration:none;margin-right:12px;">${escapeHtml(l.label)}</a>`).join('');
+      // The searches use what the FILE says (its title/artist tags), because that is what is being checked.
+      // Only a file with no usable tags falls back to the title typed in the listing and the uploader's name.
+      const fromFile = !!(tags && (tags.title || tags.artist));
+      const qTitle = fromFile ? (tags.title || '') : item.title;
+      const qArtist = fromFile ? (tags.artist || '') : who;
+      const links = searchLinks({ title: qTitle, artist: qArtist, isrc: tags && tags.isrc });
+      const searching = [qTitle && `\u201c${escapeHtml(qTitle)}\u201d`, qArtist && `by ${escapeHtml(qArtist)}`].filter(Boolean).join(' ');
+      const a = links.map(l => `<a href="${escapeHtml(l.href)}" target="_blank" rel="noopener noreferrer" style="color:#1e6feb;font-weight:600;text-decoration:none;margin-right:12px;">${escapeHtml(l.label)}</a>`).join('');
       return `<div class="tag-evidence" style="margin:8px 0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);">
         <p class="meta" style="margin:0 0 4px;">Uploaded by <b>${escapeHtml(who || 'unknown')}</b></p>${body}${warn}
-        ${a ? `<p class="meta" style="margin:6px 0 0;">Check online: ${a}</p>` : ''}
+        ${a ? `<p class="meta" style="margin:6px 0 0;">Check online${searching ? ` for ${searching} <i>(${fromFile ? "from the file's tags" : 'from the listing: the file has no tags'})</i>` : ''}: ${a}</p>` : ''}
       </div>`;
     };
 

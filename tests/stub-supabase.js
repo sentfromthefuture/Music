@@ -6,6 +6,7 @@ const cover = pub('public-previews', 'covers/1.png');
 const now = Date.now();
 const iso = (d) => new Date(now - d * 3600e3).toISOString();
 // Licensing mode simulates a database where supabase/beat-licensing.sql HAS been run (off = legacy database).
+const TAGS = (() => { try { return localStorage.getItem('stub-upload-tags') === '1'; } catch { return false; } })();
 const LIC = (() => { try { return localStorage.getItem('stub-licensing') === '1'; } catch { return false; } })();
 
 const profiles = [
@@ -107,6 +108,7 @@ class Q {
     window.__calls.push(`${this.t}:${this.op}`);
     if (this.op === 'select' && this.t === 'beats' && !LIC && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column beats.license_tiers does not exist' } }).then(res, rej);
     if (this.op === 'select' && this.t === 'tracks' && !SONG && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column tracks.license_tiers does not exist' } }).then(res, rej);
+    if (this.op === 'select' && (this.t === 'tracks' || this.t === 'beats') && !TAGS && /upload_tags/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column upload_tags does not exist' } }).then(res, rej);
     if (this.t === 'upload_rejections' && !REJ) return Promise.resolve({ data: null, error: { code: '42P01', message: 'relation "public.upload_rejections" does not exist' } }).then(res, rej);
     const rows = tables[this.t] || (tables[this.t] = []);
     let out; let error = null;

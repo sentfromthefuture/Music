@@ -3,6 +3,7 @@
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { tierLabel } from '../lib/licenses.js';
 import { createPager, revealList, cleanTerm, LIST_PAGE } from '../ui/paging.js';
+import { searchLinks } from '../lib/tags.js';
 import { songLicenseLabel, durationLabel, territoryLabel } from '../lib/song-licenses.js';
 import { createSalesView } from '../ui/admin-sales.js';
 
@@ -342,6 +343,34 @@ export async function mount({ supabase, timers: __t, document }) {
       .in('item_id', items.map(i => String(i.id)));
     const fpMap = new Map((fpRows || []).map(r => [`${r.item_type}-${r.item_id}`, r]));
 
+    // who uploaded each item, for the evidence block below
+    const ownerIds = [...new Set(items.map(i => i.owner_id).filter(Boolean))];
+    const { data: ownerRows } = ownerIds.length ? await supabase.from('profiles').select('id, display_name').in('id', ownerIds) : { data: [] };
+    const ownerName = new Map((ownerRows || []).map(o => [o.id, o.display_name || '']));
+    const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    // What the uploaded file itself says + one-tap searches. The tags are only the file's claims (they can be faked or missing).
+    const evidenceHtml = (item) => {
+      const tags = item.upload_tags && typeof item.upload_tags === 'object' ? item.upload_tags : null;
+      const who = ownerName.get(item.owner_id) || '';
+      const fields = tags ? [['Title', tags.title], ['Artist', tags.artist], ['Album', tags.album], ['Year', tags.year], ['Copyright', tags.copyright], ['Publisher', tags.publisher], ['Composer', tags.composer], ['ISRC', tags.isrc]].filter(f => f[1]) : [];
+      let body;
+      if (!tags) body = '<p class="meta">File tags: not recorded for this upload.</p>';
+      else if (!fields.length) body = '<p class="meta">File tags: none found in the file. Common for independent artists, not a warning on its own.</p>';
+      else body = `<p class="meta"><b>The file says:</b> ${fields.map(([k, v]) => `${k}: <b>${escapeHtml(v)}</b>`).join(' · ')}</p>`;
+      let warn = '';
+      if (tags && tags.artist && who && !norm(tags.artist).includes(norm(who)) && !norm(who).includes(norm(tags.artist))) {
+        warn = `<p class="meta" style="color:#b3261e;">The file's artist (${escapeHtml(tags.artist)}) differs from the uploader (${escapeHtml(who)}). It could be a stage name, so worth a look.</p>`;
+      }
+      const links = searchLinks({ title: item.title, artist: who, isrc: tags && tags.isrc });
+      const tagLinks = tags && (tags.title || tags.artist) && (norm(tags.title) !== norm(item.title) || norm(tags.artist) !== norm(who))
+        ? searchLinks({ title: tags.title || item.title, artist: tags.artist || who, isrc: null }).slice(0, 1).map(l => ({ label: 'Google (file tags)', href: l.href })) : [];
+      const a = [...links, ...tagLinks].map(l => `<a href="${escapeHtml(l.href)}" target="_blank" rel="noopener noreferrer" style="color:#1e6feb;font-weight:600;text-decoration:none;margin-right:12px;">${escapeHtml(l.label)}</a>`).join('');
+      return `<div class="tag-evidence" style="margin:8px 0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);">
+        <p class="meta" style="margin:0 0 4px;">Uploaded by <b>${escapeHtml(who || 'unknown')}</b></p>${body}${warn}
+        ${a ? `<p class="meta" style="margin:6px 0 0;">Check online: ${a}</p>` : ''}
+      </div>`;
+    };
+
     const nodes = [];
     for (const item of items) {
       const fp = fpMap.get(`${item.itemType}-${item.id}`);
@@ -354,6 +383,7 @@ export async function mount({ supabase, timers: __t, document }) {
       const card = cardShell(`
         <p class="title">${escapeHtml(item.title)} <span style="font-weight:400;color:var(--ink-muted);">(${item.itemType})</span></p>
         <p class="meta">${escapeHtml(item.genre || '')}</p>
+        ${evidenceHtml(item)}
         ${dupHtml}
         <div class="ref-badge">${escapeHtml(item.reference_number)}</div>
         <div class="sms-box">${escapeHtml(item.transaction_sms || '(no SMS text)')}</div>

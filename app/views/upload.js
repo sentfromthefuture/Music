@@ -1,5 +1,6 @@
 // Adapter view generated from legacy/original/upload.html (tools/convert-page.mjs).
 // Page logic is unchanged; the shared Supabase client, router navigation and timer cleanup are injected.
+import { readAudioTags, uploadTagsEnabled } from '../lib/tags.js';
 import { navigate as __navigate, reload as __reload } from '../lib/router.js';
 import { licensingEnabled, TIERS, loadCssOnce } from '../lib/licenses.js';
 import { songLicensingEnabled } from '../lib/song-licenses.js';
@@ -649,6 +650,10 @@ export async function mount({ supabase, timers: __t, document }) {
       setStatus('Saving…');
       const table = selectedType === 'beat' ? 'beats' : 'tracks';
       const prefix = selectedType === 'beat' ? 'BEAT' : 'TRK';
+      // what the file itself says (title, artist, copyright, ISRC...), saved for the admin reviewing it.
+      // Only when supabase/upload-tags.sql has been run; a failure here never blocks the upload.
+      let fileTags = null;
+      try { if (await uploadTagsEnabled(supabase)) fileTags = await readAudioTags(audioFile); } catch (e) { console.error(e); }
       let insertedRow = null;
       for (let attempt = 0; attempt < 5 && !insertedRow; attempt++) {
         const reference_number = genRef(prefix);
@@ -656,6 +661,7 @@ export async function mount({ supabase, timers: __t, document }) {
           ? { owner_id: user.id, title, genre, bpm: bpm ? Number(bpm) : null, price, preview_path: previewPath, full_path: fullPath, cover_url: coverUrl, ...(useTiers ? { license_tiers: tiersResult.tiers, music_key: musicKey || null, tags: tagList.length ? tagList : null, rights_confirmed: true } : {}), status: 'pending_payment', reference_number, duration_seconds: duration }
           : { owner_id: user.id, title, genre, is_free: isFree, price, preview_path: previewPath, file_path: fullPath, cover_url: coverUrl, ...(songLicResult ? { license_tiers: songLicResult.tiers, license_rights_confirmed: true } : {}), status: 'pending_payment', reference_number, duration_seconds: duration };
 
+        if (fileTags) payload.upload_tags = fileTags;
         const { data, error } = await supabase.from(table).insert(payload).select().single();
         if (!error) { insertedRow = data; break; }
         if (error.code !== '23505') throw error; // not a reference-number collision, give up

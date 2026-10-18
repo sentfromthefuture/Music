@@ -127,7 +127,7 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
         <span>Reference</span>
         <strong id="ref-number">—</strong>
       </div>
-      <p class="pay-instructions">Send <strong>K25</strong> to <strong>0573678363</strong> using <strong>Send Money</strong> (not Withdraw, so there's no extra charge). Then paste your payment SMS below.</p>
+      <p class="pay-instructions">Send <strong>K50</strong> to <strong>0573678363</strong> using <strong>Send Money</strong> (not Withdraw, so there's no extra charge). Then paste your payment SMS below.</p>
       <p class="fee-note" style="font-size:12px;color:var(--ink-muted);margin:-8px 0 14px;">Why we charge this: it helps us check every upload and stops fake or spam uploads. You only pay it once per upload — it's not a subscription.</p>
       <textarea id="sms-input" placeholder="Paste your payment confirmation SMS"></textarea>
       <button type="button" class="primary" id="sms-submit-btn"><span>Submit for review</span></button>
@@ -146,7 +146,7 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
 export async function mount({ supabase, timers: __t, document }) {
 
   // --- Fill these in from your Supabase project settings ---
-  const LISTING_FEE_TEXT = 'K25'; // shown in the pay instructions, adjust as needed
+  const LISTING_FEE_TEXT = 'K50'; // shown in the pay instructions, adjust as needed
   // -----------------------------------------------------------
   // Toggles a primary button between its normal label and a spinner + label,
   // and disables it while a request is in flight (prevents double-submits).

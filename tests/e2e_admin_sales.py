@@ -71,9 +71,11 @@ def run():
         # paging
         p.evaluate("() => { for (let i = 0; i < 60; i++) window.__tables.purchases.push({ id: 1000 + i, buyer_id: 'u4', item_id: 1, item_type: 'track', status: 'fulfilled', amount: 10, buyer_contact: '+260970000000', fulfilled_at: new Date(Date.now() - i * 60000).toISOString(), created_at: new Date(Date.now() - i * 60000).toISOString() }); }")
         open_sales(p); seg(p, 'Approved sales')   # the tab remembers the last section, so go back to sales
-        check('long lists show 50 at a time', rows(p).count() == 50 and 'Show more (15 left)' in p.locator('#tab-sales .sl-more').inner_text())
-        p.locator('#tab-sales .sl-more').click(); time.sleep(0.3)
-        check('Show more reveals the rest', rows(p).count() == 65 and p.locator('#tab-sales .sl-more').count() == 0)
+        first = rows(p).count()
+        check('long lists draw only the first batch (12 at a time, more load as you scroll)', 0 < first < 65 and p.locator('#tab-sales .sl-more').count() == 1, str(first))
+        for _ in range(8):
+            p.evaluate("window.scrollTo(0, document.body.scrollHeight)"); time.sleep(0.5)
+        check('scrolling to the end loads the rest', rows(p).count() == 65 and p.locator('#tab-sales .sl-more').count() == 0, str(rows(p).count()))
         check('no JS errors', not e.errors, '; '.join(e.errors[:3])); e.close()
 
         print('B. Rejected uploads (rejections SQL run)')

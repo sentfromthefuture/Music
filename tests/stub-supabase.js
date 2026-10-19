@@ -7,6 +7,7 @@ const now = Date.now();
 const iso = (d) => new Date(now - d * 3600e3).toISOString();
 // Licensing mode simulates a database where supabase/beat-licensing.sql HAS been run (off = legacy database).
 const TAGS = (() => { try { return localStorage.getItem('stub-upload-tags') === '1'; } catch { return false; } })();
+const MOD = (() => { try { return localStorage.getItem('stub-moderation') === '1'; } catch { return false; } })();
 const LIC = (() => { try { return localStorage.getItem('stub-licensing') === '1'; } catch { return false; } })();
 
 const profiles = [
@@ -109,6 +110,7 @@ class Q {
     if (this.op === 'select' && this.t === 'beats' && !LIC && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column beats.license_tiers does not exist' } }).then(res, rej);
     if (this.op === 'select' && this.t === 'tracks' && !SONG && /license_tiers/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column tracks.license_tiers does not exist' } }).then(res, rej);
     if (this.op === 'select' && (this.t === 'tracks' || this.t === 'beats') && !TAGS && /upload_tags/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column upload_tags does not exist' } }).then(res, rej);
+    if (this.op === 'select' && (this.t === 'tracks' || this.t === 'beats') && !MOD && /removed_reason|removal_kind/.test(String(this.cols))) return Promise.resolve({ data: null, error: { code: '42703', message: 'column removed_reason does not exist' } }).then(res, rej);
     if (this.t === 'upload_rejections' && !REJ) return Promise.resolve({ data: null, error: { code: '42P01', message: 'relation "public.upload_rejections" does not exist' } }).then(res, rej);
     const rows = tables[this.t] || (tables[this.t] = []);
     let out; let error = null;
@@ -129,7 +131,7 @@ class Q {
     else if (this.op === 'upsert') { [].concat(this.payload).forEach((r) => { const ex = rows.find((x) => cmp(x[this.conflict], r[this.conflict])); if (ex) Object.assign(ex, r); else rows.push({ ...r }); });
       (window.__ins = window.__ins || []).push({ t: this.t + ':upsert', payload: this.payload }); out = null; }
     else if (this.op === 'delete') { const keep = rows.filter((r) => !this.f.every((fn) => fn(r))); tables[this.t] = keep; out = null; }
-    else if (this.op === 'update') { const hit = rows.filter((r) => this.f.every((fn) => fn(r))); hit.forEach((r) => Object.assign(r, this.payload)); out = this.sel ? hit : null; }
+    else if (this.op === 'update') { (window.__upd = window.__upd || []).push({ t: this.t, payload: this.payload }); const hit = rows.filter((r) => this.f.every((fn) => fn(r))); hit.forEach((r) => Object.assign(r, this.payload)); out = this.sel ? hit : null; }
     else {
       out = rows.filter((r) => this.f.every((fn) => fn(r)));
       if (this.ord) { const [c, asc] = this.ord; out = [...out].sort((a, b) => (a[c] > b[c] ? 1 : a[c] < b[c] ? -1 : 0) * (asc ? 1 : -1)); }

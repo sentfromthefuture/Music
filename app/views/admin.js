@@ -273,17 +273,23 @@ export async function mount({ supabase, timers: __t, document }) {
     emptyText: 'Nothing taken down.', emptySearchText: 'Nothing taken down matches your search.',
     renderCard(item) {
       const removedDate = item.removed_at ? new Date(item.removed_at).toLocaleString() : 'unknown time';
+      const kindLabel = item.removal_kind === 'declined' ? 'Declined' : item.removal_kind === 'deleted' ? 'Deleted' : 'Taken down';
+      const declined = item.removal_kind === 'declined';
       const card = cardShell(`
         <p class="title">${escapeHtml(item.title)} <span style="font-weight:400;color:var(--ink-muted);">(${item.itemType})</span></p>
-        <p class="meta">Removed ${escapeHtml(removedDate)}</p>
+        <p class="meta">${kindLabel} ${escapeHtml(removedDate)}</p>
+        ${item.removed_reason ? `<p class="meta" style="color:#b3261e;">Reason shown to the artist: ${escapeHtml(item.removed_reason)}</p>` : ''}
         <div class="row-actions">
-          <button class="approve" style="flex:none;width:100%;">Restore</button>
+          <button class="approve" style="flex:none;width:100%;">${declined ? 'Send back to review' : 'Restore'}</button>
         </div>
       `);
       card.querySelector('.approve').addEventListener('click', async (e) => {
         e.target.disabled = true;
         const table = item.itemType === 'beat' ? 'beats' : 'tracks';
-        const { error } = await supabase.from(table).update({ status: 'approved', removed_at: null }).eq('id', item.id);
+        // a declined upload was never approved, so it goes back to review, not straight to live
+        const upd = { status: declined ? 'pending_review' : 'approved', removed_at: null };
+        if ('removal_kind' in item) { upd.removed_reason = null; upd.removal_kind = null; }
+        const { error } = await supabase.from(table).update(upd).eq('id', item.id);
         if (error) { alert(error.message); e.target.disabled = false; return; }
         card.remove();
         loadStats();
@@ -393,9 +399,20 @@ export async function mount({ supabase, timers: __t, document }) {
         <div class="sms-box">${escapeHtml(item.transaction_sms || '(no SMS text)')}</div>
         <div class="row-actions">
           <button class="approve" ${fp ? '' : 'disabled'}>${fp ? 'Approve' : 'Waiting for check…'}</button>
-          <button class="reject">Reject</button>
+          <button class="decline" style="background:var(--surface);color:#b3261e;border:1px solid #b3261e;">Decline</button>
+          <button class="reject">Reject payment</button>
         </div>
+        <p class="meta" style="margin:6px 0 0;"><b>Decline</b> = not accepted (duplicate, not original...): the artist sees why. <b>Reject payment</b> = the payment SMS is wrong, so they pay and submit again.</p>
       `);
+      card.querySelector('.decline').addEventListener('click', async (e) => {
+        const btn = e.target;
+        const reason = await askReason({ heading: `Decline "${item.title}"?`, confirmLabel: 'Decline upload' });
+        if (!reason) return;
+        btn.disabled = true;
+        try { await removeWithReason(item, 'declined', reason); } catch (err) { alert(err.message); btn.disabled = false; return; }
+        card.remove();
+        loadStats();
+      });
       card.querySelector('.approve').addEventListener('click', async (e) => {
         e.target.disabled = true;
         const table = item.itemType === 'beat' ? 'beats' : 'tracks';
@@ -419,6 +436,71 @@ export async function mount({ supabase, timers: __t, document }) {
     }
     revealList(container, nodes);
     applySearchFilter();
+  }
+
+  // --- Decline / delete with a reason the artist can read (needs supabase/moderation-reasons.sql to store it) ---
+  const REASONS = [
+    ['duplicate', 'Duplicate', 'This song is already on ZAMI.'],
+    ['not_original', 'Not original', "We couldn't confirm you own the rights to this song."],
+    ['content', 'Not allowed', 'This content is not allowed on ZAMI.'],
+    ['other', 'Other', ''],
+  ];
+  // Bottom sheet: pick a reason and add an optional note. Resolves { text } or null when cancelled.
+  function askReason({ heading, confirmLabel }) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+      const sheet = document.createElement('div');
+      sheet.style.cssText = 'background:var(--surface,#fff);color:var(--ink,#111);width:100%;max-width:460px;border-radius:16px 16px 0 0;padding:18px 18px 22px;box-sizing:border-box;max-height:90vh;overflow:auto;';
+      const h = document.createElement('p'); h.style.cssText = 'margin:0 0 4px;font-size:17px;font-weight:700;'; h.textContent = heading;
+      const sub = document.createElement('p'); sub.className = 'meta'; sub.style.cssText = 'margin:0 0 8px;'; sub.textContent = 'The artist will see the reason you pick.';
+      sheet.append(h, sub);
+      REASONS.forEach(([v, label, detail], i) => {
+        const row = document.createElement('label'); row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer;';
+        const r = document.createElement('input'); r.type = 'radio'; r.name = 'zami-reason'; r.value = v; r.checked = i === 0; r.style.marginTop = '3px';
+        const t = document.createElement('span'); const b = document.createElement('b'); b.textContent = label; t.append(b);
+        if (detail) { t.append(document.createElement('br')); const d = document.createElement('span'); d.className = 'meta'; d.textContent = detail; t.append(d); }
+        row.append(r, t); sheet.append(row);
+      });
+      const note = document.createElement('textarea'); note.maxLength = 300; note.rows = 3; note.placeholder = 'Add a short note for the artist (required for Other)';
+      note.style.cssText = 'width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#ddd);border-radius:10px;font:inherit;font-size:14px;margin-top:6px;';
+      const err = document.createElement('p'); err.style.cssText = 'margin:6px 0 0;font-size:13px;color:#b3261e;min-height:16px;';
+      const btns = document.createElement('div'); btns.style.cssText = 'display:flex;gap:10px;margin-top:10px;';
+      const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.style.cssText = 'flex:1;padding:12px;border-radius:12px;border:1px solid var(--border,#ddd);background:var(--surface,#fff);color:inherit;font:inherit;font-weight:600;cursor:pointer;';
+      const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = confirmLabel; ok.style.cssText = 'flex:1;padding:12px;border-radius:12px;border:0;background:#b3261e;color:#fff;font:inherit;font-weight:600;cursor:pointer;';
+      btns.append(cancel, ok); sheet.append(note, err, btns); overlay.append(sheet); document.body.append(overlay);
+      const close = (v) => { overlay.remove(); resolve(v); };
+      cancel.addEventListener('click', () => close(null));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+      ok.addEventListener('click', () => {
+        const key = sheet.querySelector('input[name="zami-reason"]:checked').value;
+        const extra = note.value.trim();
+        const [, label, detail] = REASONS.find(r => r[0] === key);
+        if (key === 'other' && extra.length < 3) { err.textContent = 'Please write a short note for the artist.'; return; }
+        close({ key, text: (key === 'other' ? extra : `${label}. ${detail}${extra ? ' ' + extra : ''}`).slice(0, 500) });
+      });
+    });
+  }
+  // Columns for the reason live on tracks and beats (supabase/moderation-reasons.sql); everything still works without them.
+  let moderationProbe = null;
+  const moderationColumns = () => {
+    if (!moderationProbe) moderationProbe = Promise.all(['tracks', 'beats'].map(t => supabase.from(t).select('removed_reason, removal_kind').limit(1)))
+      .then(rs => rs.every(r => !r.error)).catch(() => false);
+    return moderationProbe;
+  };
+  // kind: 'declined' (a pending upload) or 'deleted' (a live song). The song is hidden from everyone; the artist sees the reason.
+  async function removeWithReason(item, kind, reason) {
+    const table = item.itemType === 'beat' ? 'beats' : 'tracks';
+    const enabled = await moderationColumns();
+    const upd = { status: 'removed', removed_at: new Date().toISOString() };
+    if (enabled) { upd.removed_reason = reason.text; upd.removal_kind = kind; }
+    const { error } = await supabase.from(table).update(upd).eq('id', item.id);
+    if (error) throw error;
+    if (kind === 'declined') {
+      // keep a record for Purchased Items -> Rejected uploads (best effort)
+      try { await supabase.from('upload_rejections').insert({ item_type: item.itemType, item_id: String(item.id), owner_id: item.owner_id, title: item.title, genre: item.genre || null, reference_number: item.reference_number || null, transaction_sms: item.transaction_sms || null, ...(enabled ? { reason: reason.text } : {}) }); } catch { /* optional */ }
+    }
+    if (!enabled) alert('Done, but the reason could not be saved because supabase/moderation-reasons.sql has not been run, so the artist will not see it yet.');
   }
 
   // --- Purchased Items: every approved sale (and rejected purchases / uploads), who bought, from whom, when ---
@@ -620,15 +702,15 @@ export async function mount({ supabase, timers: __t, document }) {
         <p class="title">${escapeHtml(item.title)} <span style="font-weight:400;color:var(--ink-muted);">(${item.itemType})</span></p>
         <p class="meta">${escapeHtml(item.genre || '')} · ${priceLabel}</p>
         <div class="row-actions">
-          <button class="reject" style="flex:none;width:100%;">Take down</button>
+          <button class="reject" style="flex:none;width:100%;">Delete song</button>
         </div>
       `);
       card.querySelector('.reject').addEventListener('click', async (e) => {
-        if (!confirm(`Take down "${item.title}"? It will no longer be visible to anyone.`)) return;
-        e.target.disabled = true;
-        const table = item.itemType === 'beat' ? 'beats' : 'tracks';
-        const { error } = await supabase.from(table).update({ status: 'removed', removed_at: new Date().toISOString() }).eq('id', item.id);
-        if (error) { alert(error.message); e.target.disabled = false; return; }
+        const btn = e.target;
+        const reason = await askReason({ heading: `Delete "${item.title}"?`, confirmLabel: 'Delete song' });
+        if (!reason) return;
+        btn.disabled = true;
+        try { await removeWithReason(item, 'deleted', reason); } catch (err) { alert(err.message); btn.disabled = false; return; }
         card.remove();
         loadStats();
       });

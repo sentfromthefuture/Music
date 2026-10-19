@@ -78,7 +78,14 @@ export async function mount({ supabase, timers: __t, document }) {
   }
 
   function cardHtml(item) {
-    const label = item.exclusive_sold ? 'Sold exclusively' : (STATUS_LABELS[item.status] || item.status);
+    const removedLabel = item.removal_kind === 'declined' ? 'Declined' : item.removal_kind === 'deleted' ? 'Removed' : null;
+    const label = item.exclusive_sold ? 'Sold exclusively' : (item.status === 'removed' && removedLabel) || (STATUS_LABELS[item.status] || item.status);
+    // why ZAMI declined / removed it (set by an admin), so the artist is never left guessing
+    const reasonSection = item.status === 'removed' && item.removed_reason ? `
+      <div class="pay-section" style="border-color:#b3261e;">
+        <p class="pay-instructions" style="margin:0 0 6px;"><strong style="color:#b3261e;">${escapeHtml(removedLabel || 'Taken down')} by ZAMI.</strong> Reason: ${escapeHtml(item.removed_reason)}</p>
+        <p class="status-line" style="margin:0;">Think this is a mistake? Contact management at <a href="mailto:zamimusicltd@gmail.com">zamimusicltd@gmail.com</a>.</p>
+      </div>` : '';
     const paySection = item.status === 'pending_payment' ? `
       <div class="pay-section" data-pay-section>
         <div class="ref-badge">
@@ -100,7 +107,7 @@ export async function mount({ supabase, timers: __t, document }) {
           <span class="badge ${item.status}">${escapeHtml(label)}</span>
         </div>
       </div>
-      ${paySection}
+      ${paySection}${reasonSection}
     `;
   }
 
@@ -270,6 +277,15 @@ export async function mount({ supabase, timers: __t, document }) {
 
     if (previousStatus !== 'approved' && newRow.status === 'approved') {
       notifyApproved(uploads[idx]);
+    }
+    if (previousStatus !== 'removed' && newRow.status === 'removed') {
+      notifyRemoved(uploads[idx]);
+    }
+  }
+
+  function notifyRemoved(item) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(item.removal_kind === 'declined' ? 'Your upload was declined' : 'Your song was removed', { body: `${item.title}${item.removed_reason ? ': ' + item.removed_reason : ''}` });
     }
   }
 

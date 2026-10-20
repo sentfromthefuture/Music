@@ -86,7 +86,7 @@ export async function mount({ supabase, timers: __t, document }) {
       <p id="adm-status" style="margin:10px 0 0;font-size:13px;color:var(--ink-muted);"></p>`;
     gate.replaceChildren(box);
     const $ = (id) => box.querySelector('#' + id);
-    const status = (t, err) => { $('adm-status').textContent = t || ''; $('adm-status').style.color = err ? '#b3261e' : 'var(--ink-muted)'; };
+    const status = (t, err) => { $('adm-status').textContent = t || ''; $('adm-status').style.color = err ? 'var(--danger,#b3261e)' : 'var(--ink-muted)'; };
     if (note) status(note, true);
     let phone = null;
     $('adm-send').addEventListener('click', async (e) => {
@@ -278,7 +278,7 @@ export async function mount({ supabase, timers: __t, document }) {
       const card = cardShell(`
         <p class="title">${escapeHtml(item.title)} <span style="font-weight:400;color:var(--ink-muted);">(${item.itemType})</span></p>
         <p class="meta">${kindLabel} ${escapeHtml(removedDate)}</p>
-        ${item.removed_reason ? `<p class="meta" style="color:#b3261e;">Reason shown to the artist: ${escapeHtml(item.removed_reason)}</p>` : ''}
+        ${item.removed_reason ? `<p class="meta" style="color:var(--danger,#b3261e);">Reason shown to the artist: ${escapeHtml(item.removed_reason)}</p>` : ''}
         <div class="row-actions">
           <button class="approve" style="flex:none;width:100%;">${declined ? 'Send back to review' : 'Restore'}</button>
         </div>
@@ -365,7 +365,7 @@ export async function mount({ supabase, timers: __t, document }) {
       else body = `<p class="meta"><b>The file says:</b> ${fields.map(([k, v]) => `${k}: <b>${escapeHtml(v)}</b>`).join(' · ')}</p>`;
       let warn = '';
       if (tags && tags.artist && who && !norm(tags.artist).includes(norm(who)) && !norm(who).includes(norm(tags.artist))) {
-        warn = `<p class="meta" style="color:#b3261e;">The file's artist (${escapeHtml(tags.artist)}) differs from the uploader (${escapeHtml(who)}). It could be a stage name, so worth a look.</p>`;
+        warn = `<p class="meta" style="color:var(--danger,#b3261e);">The file's artist (${escapeHtml(tags.artist)}) differs from the uploader (${escapeHtml(who)}). It could be a stage name, so worth a look.</p>`;
       }
       // The searches use what the FILE says (its title/artist tags), because that is what is being checked.
       // Only a file with no usable tags falls back to the title typed in the listing and the uploader's name.
@@ -399,7 +399,7 @@ export async function mount({ supabase, timers: __t, document }) {
         <div class="sms-box">${escapeHtml(item.transaction_sms || '(no SMS text)')}</div>
         <div class="row-actions">
           <button class="approve" ${fp ? '' : 'disabled'}>${fp ? 'Approve' : 'Waiting for check…'}</button>
-          <button class="decline" style="background:var(--surface);color:#b3261e;border:1px solid #b3261e;">Decline</button>
+          <button class="decline" style="background:var(--surface);color:var(--danger,#b3261e);border:1px solid var(--danger,#b3261e);">Decline</button>
           <button class="reject">Reject payment</button>
         </div>
         <p class="meta" style="margin:6px 0 0;"><b>Decline</b> = not accepted (duplicate, not original...): the artist sees why. <b>Reject payment</b> = the payment SMS is wrong, so they pay and submit again.</p>
@@ -464,10 +464,10 @@ export async function mount({ supabase, timers: __t, document }) {
       });
       const note = document.createElement('textarea'); note.maxLength = 300; note.rows = 3; note.placeholder = 'Add a short note for the artist (required for Other)';
       note.style.cssText = 'width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#ddd);border-radius:10px;font:inherit;font-size:14px;margin-top:6px;';
-      const err = document.createElement('p'); err.style.cssText = 'margin:6px 0 0;font-size:13px;color:#b3261e;min-height:16px;';
+      const err = document.createElement('p'); err.style.cssText = 'margin:6px 0 0;font-size:13px;color:var(--danger,#b3261e);min-height:16px;';
       const btns = document.createElement('div'); btns.style.cssText = 'display:flex;gap:10px;margin-top:10px;';
       const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel'; cancel.style.cssText = 'flex:1;padding:12px;border-radius:12px;border:1px solid var(--border,#ddd);background:var(--surface,#fff);color:inherit;font:inherit;font-weight:600;cursor:pointer;';
-      const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = confirmLabel; ok.style.cssText = 'flex:1;padding:12px;border-radius:12px;border:0;background:#b3261e;color:#fff;font:inherit;font-weight:600;cursor:pointer;';
+      const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = confirmLabel; ok.style.cssText = 'flex:1;padding:12px;border-radius:12px;border:0;background:var(--danger,#b3261e);color:#fff;font:inherit;font-weight:600;cursor:pointer;';
       btns.append(cancel, ok); sheet.append(note, err, btns); overlay.append(sheet); document.body.append(overlay);
       const close = (v) => { overlay.remove(); resolve(v); };
       cancel.addEventListener('click', () => close(null));
@@ -646,7 +646,7 @@ export async function mount({ supabase, timers: __t, document }) {
       rows.push(`<li style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;"><span style="min-width:0;">${escapeHtml(title)}<span style="color:var(--ink-muted);"> (${escapeHtml(sale.item_type)}${tier}${date}${ref})</span></span><span style="flex:none;font-weight:600;">K${part}${partial}</span></li>`);
     }
     const mismatch = total !== target
-      ? `<p class="meta" style="color:#b3261e;">Items found total K${total} but this request is K${target} — check manually.</p>` : '';
+      ? `<p class="meta" style="color:var(--danger,#b3261e);">Items found total K${total} but this request is K${target} — check manually.</p>` : '';
     return `<ul style="list-style:none;margin:6px 0;padding:0;font-size:13px;">${rows.join('') || '<li>No matching sales found.</li>'}</ul>
       <p class="meta" style="font-weight:600;">Total K${target} → artist gets K${payoutOf(w)} (75%)</p>${mismatch}`;
   }
@@ -751,13 +751,13 @@ export async function mount({ supabase, timers: __t, document }) {
     for (const r of [...rows].sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1))) {
       const open = r.status !== 'resolved';
       const card = cardShell(`
-        <p class="title">${escapeHtml(titleMap.get(String(r.item_id)) || 'Beat #' + r.item_id)} <span style="font-weight:400;color:${open ? '#b3261e' : 'var(--ink-muted)'};">(${!open ? 'resolved' : (r.producer_fixed_at ? 'producer says fixed' : 'open')})</span></p>
+        <p class="title">${escapeHtml(titleMap.get(String(r.item_id)) || 'Beat #' + r.item_id)} <span style="font-weight:400;color:${open ? 'var(--danger,#b3261e)' : 'var(--ink-muted)'};">(${!open ? 'resolved' : (r.producer_fixed_at ? 'producer says fixed' : 'open')})</span></p>
         <p class="meta">Buyer: ${escapeHtml(r.buyer_name || 'Unknown')} · ${escapeHtml(r.buyer_contact || 'no contact')}</p>
         <p class="meta">Producer: ${escapeHtml(prodMap.get(r.producer_id) || 'Unknown')} · ${prodPhone.get(r.producer_id) ? `<a href="tel:${escapeHtml(prodPhone.get(r.producer_id))}">${escapeHtml(prodPhone.get(r.producer_id))}</a> · <a href="${escapeHtml(waLink(prodPhone.get(r.producer_id)))}" target="_blank" rel="noopener noreferrer">WhatsApp</a>${loginPhone.get(r.producer_id) ? '' : ' (payout MoMo)'}${loginPhone.get(r.producer_id) && momoPhone.get(r.producer_id) && momoPhone.get(r.producer_id).replace(/\D/g, '') !== loginPhone.get(r.producer_id).replace(/\D/g, '') ? ' · MoMo: ' + escapeHtml(momoPhone.get(r.producer_id)) : ''}` : 'no number saved'}</p>
         <p class="meta">Filed ${escapeHtml(new Date(r.created_at).toLocaleString())}</p>
         <p style="margin:8px 0;font-size:14px;white-space:pre-wrap;">${escapeHtml(r.message)}</p>
         ${r.producer_fixed_at ? `<p class="meta" style="color:#1a7f37;font-weight:600;">Producer marked fixed ${escapeHtml(new Date(r.producer_fixed_at).toLocaleDateString())}${r.producer_reply ? ': ' + escapeHtml(r.producer_reply) : ''}</p>` : (open ? '<p class="meta">Producer has not replied yet.</p>' : (r.producer_reply ? `<p class="meta">Producer reply: ${escapeHtml(r.producer_reply)}</p>` : ''))}
-        ${r.reopened_at && open ? `<p class="meta" style="color:#b3261e;font-weight:600;">Buyer reopened this on ${escapeHtml(new Date(r.reopened_at).toLocaleDateString())} — not fixed.</p>` : ''}
+        ${r.reopened_at && open ? `<p class="meta" style="color:var(--danger,#b3261e);font-weight:600;">Buyer reopened this on ${escapeHtml(new Date(r.reopened_at).toLocaleDateString())} — not fixed.</p>` : ''}
         ${open ? '<div class="row-actions"><button class="approve resolve">Mark resolved</button></div>' : ''}
       `);
       const btn = card.querySelector('.resolve');

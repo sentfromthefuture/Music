@@ -42,6 +42,7 @@
   ]
 }
 </script>
+<script>try{var t=localStorage.getItem('zami-theme');if(t!=='dark'&&t!=='light')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <style>
   :root {
     --bg: #f6f7f5;
@@ -56,6 +57,13 @@
     --accent-ink: #ffffff;
     --success: #2f8f5b;
   }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1113; --surface: #171b1f; --surface-alt: #20262b; --border: #2d353b;
+    --ink: #e8ede9; --ink-muted: #9aa6a0; --accent: #3b82f6; --accent-deep: #0d3f8f;
+  }
+  :root[data-theme="dark"] .tag { color: #9cc3ff; }
+  :root[data-theme="dark"] .hero { background: linear-gradient(160deg, #0d3f8f 0%, #1e6feb 55%, #2fbf5c 100%); }
   * { box-sizing: border-box; }
   body {
     margin: 0;

@@ -26,7 +26,7 @@ export async function mountProducerComplaints({ supabase, container, before, use
   const render = () => {
     const open = data.filter(needs).length;
     h3.textContent = open ? `Buyer complaints (${open} need${open === 1 ? 's' : ''} your reply)` : 'Buyer complaints';
-    h3.style.color = open ? '#b3261e' : '';
+    h3.style.color = open ? 'var(--danger,#b3261e)' : '';
     box.replaceChildren(h3);
     for (const r of data) {
       const row = el('div', 'lic-req');

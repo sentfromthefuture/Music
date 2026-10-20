@@ -1,0 +1,74 @@
+/* ZAMI dark mode. Loaded after shell.css on every page; it only does anything when <html data-theme="dark">
+   (set by the snippet in each page's <head> and by the header toggle). Light mode is untouched.
+   Most of the site is token-driven, so the first two blocks re-point the tokens; the rest fix the few
+   hard-coded colours (tinted status pills, white-on-ink buttons, the share sheet and app-promo popups). */
+
+/* ---- tokens: shell (--zs-*) and the short names views use (also on :root so modals appended to <body> pick them up) ---- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --zs-bg: #0e1113; --zs-surface: #171b1f; --zs-surface-alt: #20262b; --zs-border: #2d353b;
+  --zs-ink: #e8ede9; --zs-ink-muted: #9aa6a0; --zs-accent: #3b82f6; --zs-danger: #e5534b;
+}
+:root[data-theme="dark"], :root[data-theme="dark"] #zs-view {
+  --bg: #0e1113; --surface: #171b1f; --surface-alt: #20262b; --border: #2d353b;
+  --ink: #e8ede9; --ink-muted: #9aa6a0; --danger: #e5534b;
+  --warn-bg: #3a2d12; --warn-ink: #f0c26b;
+}
+
+/* ---- shell ---- */
+:root[data-theme="dark"] .zs-header { background: rgba(14,17,19,.92); }
+:root[data-theme="dark"] .zs-bottomnav { background: rgba(23,27,31,.96); }
+/* these use the ink colour as a fill, which is now light, so their white text flips to the dark background colour */
+:root[data-theme="dark"] .zs-skip,
+:root[data-theme="dark"] .zs-toast,
+:root[data-theme="dark"] .zs-ibtn--primary,
+:root[data-theme="dark"] .zs-topnav .zs-nav-link.is-active,
+:root[data-theme="dark"] .lic-tier-buy { color: var(--zs-bg); }
+:root[data-theme="dark"] .zs-ibtn--primary:hover:not(:disabled) { background: #fff; }
+:root[data-theme="dark"] .zs-inline-error { background: #3a1a18; color: #ffb4ab; }
+:root[data-theme="dark"] .zs-skel { background: linear-gradient(100deg, var(--zs-surface-alt) 30%, #2b333a 50%, var(--zs-surface-alt) 70%); background-size: 200% 100%; }
+:root[data-theme="dark"] .zs-range::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--zs-accent) var(--p), #46515a var(--p), #46515a var(--b), var(--zs-border) var(--b)); }
+:root[data-theme="dark"] .zs-player { box-shadow: 0 -6px 20px rgba(0,0,0,.45); }
+:root[data-theme="dark"] .zs-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+:root[data-theme="dark"] .zs-heart { background: rgba(23,27,31,.88); }
+:root[data-theme="dark"] .zs-card-price,
+:root[data-theme="dark"] .lic-ok { color: #3ecf82; }
+
+/* ---- status pills, banners, errors (views are scoped under #zs-view) ---- */
+:root[data-theme="dark"] #zs-view .status-line.error,
+:root[data-theme="dark"] #zs-view .as-bad { color: #ff8a80; }
+:root[data-theme="dark"] #zs-view .paid-banner,
+:root[data-theme="dark"] #zs-view .badge.approved,
+:root[data-theme="dark"] #zs-view .sl-badge.is-ok,
+:root[data-theme="dark"] #zs-view .as-badge.is-live { background: #12301f; color: #5fd69a; }
+:root[data-theme="dark"] #zs-view .sl-badge.is-bad,
+:root[data-theme="dark"] #zs-view .dup-badge { background: #3a1a18; color: #ff9a92; }
+:root[data-theme="dark"] #zs-view .as-badge.is-wait { background: #3a2d12; color: #f0c26b; }
+:root[data-theme="dark"] #zs-view .as-sub.is-wait { color: #f0c26b; }
+:root[data-theme="dark"] #zs-view .as-sale.is-wait { background: #2b2410; }
+:root[data-theme="dark"] #zs-view .rank-stat-icon.trend-same { background: var(--surface-alt); }
+:root[data-theme="dark"] #zs-view .rank-card-stat { text-shadow: none; }
+/* inline-styled links/text written by admin.js */
+:root[data-theme="dark"] #zs-view a[style*="color:#1e6feb"] { color: #6ea8ff !important; }
+:root[data-theme="dark"] #zs-view [style*="color:#1a7f37"] { color: #3ecf82 !important; }
+
+/* the decorative background glow is vivid on a dark page; soften it */
+:root[data-theme="dark"] #zs-view .blob { opacity: .16; }
+
+/* ---- share-poster sheet (zami-share.js) ---- */
+:root[data-theme="dark"] .zs-sheet { background: #171b1f; color: #e8ede9; box-shadow: 0 20px 60px rgba(0,0,0,.7); }
+:root[data-theme="dark"] .zs-sheet .zs-close { background: rgba(255,255,255,.08); color: #e8ede9; }
+:root[data-theme="dark"] .zs-sheet .zs-msg,
+:root[data-theme="dark"] .zs-sheet .zs-note { color: #9aa6a0; }
+:root[data-theme="dark"] .zs-sheet .zs-btn:not(.zs-primary) { background: #20262b; border-color: #2d353b; color: #6ea8ff; }
+:root[data-theme="dark"] .zs-sheet .zs-link { color: #6ea8ff; }
+/* the sheet's poster placeholder shares the .zs-skel class with the shell skeleton; keep its own navy look */
+:root[data-theme="dark"] .zs-sheet .zs-skel { background: linear-gradient(160deg, #10203a, #0a0f1a); }
+
+/* ---- "get the app" popup (zami-app-promo.js) ---- */
+:root[data-theme="dark"] #zami-promo-card { background: #171b1f; box-shadow: 0 -8px 30px rgba(0,0,0,.6); }
+:root[data-theme="dark"] #zami-promo-title,
+:root[data-theme="dark"] #zami-promo-body { color: #e8ede9; }
+:root[data-theme="dark"] #zami-promo-sub,
+:root[data-theme="dark"] #zami-promo-close,
+:root[data-theme="dark"] #zami-promo-later { color: #9aa6a0; }

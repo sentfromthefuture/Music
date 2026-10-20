@@ -49,11 +49,13 @@ export function createWaveform({ track, src, height = 56 }) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, height);
     const step = 3, n = Math.max(1, Math.floor(w / step));
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const played = dark ? '#3b82f6' : '#1e6feb', idle = dark ? '#46515a' : '#c9cdc7';
     for (let i = 0; i < n; i++) {
       const from = Math.floor((i / n) * RES), to = Math.max(from + 1, Math.floor(((i + 1) / n) * RES));
       let m = 0; for (let k = from; k < to; k++) if (peaks[k] > m) m = peaks[k];
       const bh = Math.max(3, m * height);
-      g.fillStyle = (i + 0.5) / n <= frac ? '#1e6feb' : '#c9cdc7';
+      g.fillStyle = (i + 0.5) / n <= frac ? played : idle;
       g.fillRect(i * step, (height - bh) / 2, 2, bh);
     }
   }
@@ -65,6 +67,8 @@ export function createWaveform({ track, src, height = 56 }) {
     frac = f; box.setAttribute('aria-valuenow', String(Math.round(f * 100))); draw();
   }
   const unsubs = [P.progress.subscribe(onProgress), P.state.subscribe(onProgress)];
+  const onTheme = () => draw();
+  window.addEventListener('zs:theme', onTheme);
 
   function seekTo(f) {
     f = Math.min(1, Math.max(0, f));
@@ -96,5 +100,5 @@ export function createWaveform({ track, src, height = 56 }) {
       .finally(() => { if (!destroyed) box.classList.remove('is-loading'); });
   }
   onProgress();
-  return { el: box, destroy() { destroyed = true; abort.abort(); unsubs.forEach((u) => u()); ro?.disconnect(); } };
+  return { el: box, destroy() { destroyed = true; abort.abort(); window.removeEventListener('zs:theme', onTheme); unsubs.forEach((u) => u()); ro?.disconnect(); } };
 }

@@ -3,6 +3,7 @@
 import { h } from '../lib/dom.js';
 import { icon } from './icons.js';
 import { onRouteChange } from '../lib/router.js';
+import { currentTheme, toggleTheme } from './theme.js';
 
 const NAV = [
   { href: 'browse.html', label: 'Browse', icon: 'browse', match: (u) => u.pathname.endsWith('/browse.html') && u.hash !== '#search' },
@@ -21,6 +22,17 @@ export function buildShell(root) {
   const account = h('a', { href: 'account.html', class: 'zs-account', 'aria-label': 'My account' });
   account.innerHTML = icon('user', 22);
 
+  const themeBtn = h('button', { type: 'button', class: 'zs-theme' });
+  const paintTheme = () => {
+    const dark = currentTheme() === 'dark';
+    themeBtn.innerHTML = icon(dark ? 'sun' : 'moon', 22);
+    themeBtn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeBtn.title = dark ? 'Light mode' : 'Dark mode';
+  };
+  paintTheme();
+  themeBtn.addEventListener('click', () => { toggleTheme(); });
+  window.addEventListener('zs:theme', paintTheme);
+
   const header = h('header', { class: 'zs-header' },
     h('div', { class: 'zs-header-in' },
       h('a', { href: 'browse.html', class: 'zs-brand', 'aria-label': 'ZAMI home' },
@@ -29,7 +41,7 @@ export function buildShell(root) {
         const a = h('a', { href: n.href, class: 'zs-nav-link' }, h('span', { class: 'zs-nav-label' }, n.label));
         a.dataset.nav = n.href; return a;
       })),
-      account));
+      themeBtn, account));
 
   const bottom = h('nav', { class: 'zs-bottomnav', 'aria-label': 'Primary' }, links.map(({ n, a }) => { a.dataset.nav = n.href; return a; }));
   const outlet = h('main', { id: 'zs-view', class: 'zs-main', tabindex: -1 });

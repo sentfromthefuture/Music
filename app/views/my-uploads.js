@@ -82,8 +82,8 @@ export async function mount({ supabase, timers: __t, document }) {
     const label = item.exclusive_sold ? 'Sold exclusively' : (item.status === 'removed' && removedLabel) || (STATUS_LABELS[item.status] || item.status);
     // why ZAMI declined / removed it (set by an admin), so the artist is never left guessing
     const reasonSection = item.status === 'removed' && item.removed_reason ? `
-      <div class="pay-section" style="border-color:#b3261e;">
-        <p class="pay-instructions" style="margin:0 0 6px;"><strong style="color:#b3261e;">${escapeHtml(removedLabel || 'Taken down')} by ZAMI.</strong> Reason: ${escapeHtml(item.removed_reason)}</p>
+      <div class="pay-section" style="border-color:var(--danger,#b3261e);">
+        <p class="pay-instructions" style="margin:0 0 6px;"><strong style="color:var(--danger,#b3261e);">${escapeHtml(removedLabel || 'Taken down')} by ZAMI.</strong> Reason: ${escapeHtml(item.removed_reason)}</p>
         <p class="status-line" style="margin:0;">Think this is a mistake? Contact management at <a href="mailto:zamimusicltd@gmail.com">zamimusicltd@gmail.com</a>.</p>
       </div>` : '';
     const paySection = item.status === 'pending_payment' ? `

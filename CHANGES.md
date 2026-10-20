@@ -53,3 +53,12 @@ Items with no sales are listed greyed out. Buyers' phone numbers and payment SMS
 - **Other pages**: Library (downloads, purchases, favourites, following), Artist page, My Uploads and Balance "Sales by item" show 12 first.
 - Browse page size is 12 (`PAGE_SIZE` in `app/lib/api.js`).
 - Tests: `tests/e2e_paging.py`.
+
+## Dark mode
+Follows the device setting until the visitor picks a theme with the sun/moon button in the header; the choice is saved in
+`localStorage` (`zami-theme`). Light mode is unchanged.
+**Added:** `app/css/dark.css` (token overrides + the few hard-coded colours), `app/ui/theme.js` (toggle + live device-follow), `tests/e2e_darkmode.py`.
+**Modified:** every page in `<head>` (one inline line that sets `data-theme` before first paint + the `dark.css` link), `index.html`
+(own dark tokens), `app/ui/shell.js` + `app/css/shell.css` + `app/ui/icons.js` (toggle button), `app/ui/waveform.js` (bar colours),
+`admin.js` / `my-uploads.js` / `complaints.js` (hard-coded red → `var(--danger,#b3261e)`, same colour in light mode).
+**Not themed:** `street-rush.html` (the game), the generated share/licence poster images (they are images, not UI).

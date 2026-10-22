@@ -6,6 +6,7 @@ import { addLicenseControls } from '../ui/license-controls.js';
 import { addSongLicenseControls } from '../ui/song-license-controls.js';
 import { complaintsEnabled, mountProducerComplaints } from '../ui/complaints.js';
 import { revealList } from '../ui/paging.js';
+import { shareArtist } from '../ui/share-link.js';
 
 export const title = "My Account — Music Platform";
 export const css = 'css/views/account.css';
@@ -63,6 +64,7 @@ export const markup = `<div class="bg-blobs" aria-hidden="true">
     <div class="card hidden" id="artist-links">
       <a href="my-uploads.html" class="link-row">My Uploads <span class="arrow">→</span></a>
       <a href="balance.html" class="link-row">My Balance &amp; Withdrawals <span class="arrow">→</span></a>
+      <a href="#" class="link-row" id="share-profile-link" data-no-router>Share my profile link <span class="arrow">↗</span></a>
     </div>
 
     <div id="producer-complaints"></div>
@@ -129,6 +131,7 @@ export async function mount({ supabase, timers: __t, document }) {
 
     if (profile?.role === 'artist') {
       document.getElementById('artist-links').classList.remove('hidden');
+      document.getElementById('share-profile-link').addEventListener('click', (e) => { e.preventDefault(); shareArtist(user.id, profile?.display_name); });
       complaintsEnabled(supabase).then((on) => {
         if (on) mountProducerComplaints({ supabase, container: document.getElementById('producer-complaints'), userId: user.id });
       }).catch(() => {});

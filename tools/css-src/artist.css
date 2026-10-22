@@ -18,7 +18,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-
 #follow-btn { min-height: 44px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 #follow-btn.following { background: var(--surface); color: var(--accent); }
 #follow-btn:disabled { opacity: .6; cursor: default; }
-#play-all-btn { min-height: 44px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+#play-all-btn, #share-btn { min-height: 44px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .section-title { font-size: 17px; font-weight: 700; margin: 22px 0 10px; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

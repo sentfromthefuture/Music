@@ -5,6 +5,7 @@ import { supabase, getUser } from '../lib/supabase.js';
 import { loadFavorites } from '../lib/favorites.js';
 import * as P from '../player/player.js';
 import { icon } from '../ui/icons.js';
+import { shareArtist } from '../ui/share-link.js';
 import { itemCard, isPlayable, wireGlobalSync, skeletonGrid, playFromList } from '../ui/cards.js';
 import { nameMap } from '../lib/api.js';
 
@@ -91,6 +92,11 @@ export async function mount(ctx) {
     playAll.addEventListener('click', () => { const first = rows.find(isPlayable); if (first) playFromList(rows, first); });
     actions.push(playAll);
   }
+
+  const shareBtn = h('button', { type: 'button', id: 'share-btn' });
+  shareBtn.innerHTML = `${icon('share', 20)} Share`;
+  shareBtn.addEventListener('click', () => shareArtist(artistId, name));
+  actions.push(shareBtn);
 
   profileCard.replaceChildren(
     h('div', { class: 'profile-avatar' }, name.slice(0, 2).toUpperCase()),

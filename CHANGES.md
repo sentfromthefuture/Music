@@ -62,3 +62,10 @@ Follows the device setting until the visitor picks a theme with the sun/moon but
 (own dark tokens), `app/ui/shell.js` + `app/css/shell.css` + `app/ui/icons.js` (toggle button), `app/ui/waveform.js` (bar colours),
 `admin.js` / `my-uploads.js` / `complaints.js` (hard-coded red → `var(--danger,#b3261e)`, same colour in light mode).
 **Not themed:** `street-rush.html` (the game), the generated share/licence poster images (they are images, not UI).
+
+## Shareable artist profile link
+Every artist profile now has a public link, `https://zami.site/artist.html?id=<artist id>` (the page already existed; this makes it
+easy to share). **Artist page:** new Share button next to Follow / Play all. **My Account (artists only):** new "Share my profile link" row.
+Both open the phone's share sheet when available, otherwise copy the link (clipboard API, then a legacy copy fallback for WebViews) and show a toast.
+**Added:** `app/ui/share-link.js`, `tests/e2e_artist_link.py`, `share` icon. **Modified:** `app/views/artist.js`, `app/views/account.js`,
+`tools/css-src/artist.css` (+ regenerated `app/css/views/artist.css`).

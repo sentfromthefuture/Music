@@ -59,7 +59,8 @@
 #zs-view #follow-btn:disabled {
   opacity: .6; cursor: default;
 }
-#zs-view #play-all-btn {
+#zs-view #play-all-btn,
+#zs-view #share-btn {
   min-height: 44px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
 }
 #zs-view .section-title {

@@ -69,3 +69,13 @@ easy to share). **Artist page:** new Share button next to Follow / Play all. **M
 Both open the phone's share sheet when available, otherwise copy the link (clipboard API, then a legacy copy fallback for WebViews) and show a toast.
 **Added:** `app/ui/share-link.js`, `tests/e2e_artist_link.py`, `share` icon. **Modified:** `app/views/artist.js`, `app/views/account.js`,
 `tools/css-src/artist.css` (+ regenerated `app/css/views/artist.css`).
+
+## Browse page: visual redesign (look only)
+Same data, filters, search, player, paging and links as before — only styling and the static page template changed.
+**Layout:** every section (New Release, Featured Artists, Trending Now, Recently played, Top Downloads) is now a white panel with a
+light-blue border, an icon tile, a title, a divider line and a "See all" pill; "Latest music" gets a gradient divider bar and icon header.
+The New Release banner is a light-blue card with the cover on the right; Trending Now is a ranked list with hairline dividers;
+a soft wave graphic sits beside the page title; the page background is a very light blue. On screens ≥ 900px, Trending Now and
+Top Downloads sit side by side. Dark mode has matching tints.
+**Modified:** `tools/css-src/browse.css` (+ regenerated `app/css/views/browse.css`), `app/views/browse.js` (template only: panel wrappers and
+SVG section icons replace the emoji; all ids, classes and logic unchanged), `app/css/dark.css` (Browse tints).

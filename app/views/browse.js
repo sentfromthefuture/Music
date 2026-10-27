@@ -12,6 +12,17 @@ import { itemCard, rankCard, artistChip, skeletonGrid, skeletonRail, wireGlobalS
 import { showToast } from '../ui/toast.js';
 import { replaceQuery } from '../lib/router.js';
 
+// Section header icons (inline SVG, decorative). Tile colour and stroke colour come from the stylesheet.
+const ico = (paths) => `<span class="bsec-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg></span>`;
+const ICO = {
+  megaphone: ico(`<path d="M3 10v4l11 4V6z"/><path d="M7 15.5V18a2 2 0 0 0 4 0v-1.2"/><path d="M17.5 9a4 4 0 0 1 0 6M20 6.5a8 8 0 0 1 0 11"/>`),
+  star: ico(`<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>`),
+  trend: ico(`<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>`),
+  clock: ico(`<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`),
+  download: ico(`<path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 19h16"/>`),
+  music: ico(`<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>`),
+};
+
 export const title = 'Browse — ZAMI';
 export const css = 'css/views/browse.css';
 export const markup = `${MEDAL_DEFS}
@@ -36,33 +47,40 @@ export const markup = `${MEDAL_DEFS}
   </div>
 
   <div id="rails">
-    <section id="featured-banner" class="fbanner rail-hidden" aria-label="Featured music">
+    <section id="featured-banner" class="fbanner bsec rail-hidden" aria-label="Featured music">
+      <div class="bsec-head">${ICO.megaphone}<p class="section-title">New Release</p></div>
       <div class="fbanner-track" id="fbanner-track"></div>
       <div class="fbanner-dots" id="fbanner-dots" role="tablist" aria-label="Featured tracks"></div>
     </section>
 
-    <p class="section-title" style="margin:4px 0 10px;">🌟 Featured Artists</p>
-    <div class="artist-strip" id="artist-strip" role="list"></div>
+    <section class="bsec" aria-label="Featured artists">
+      <div class="bsec-head">${ICO.star}<p class="section-title">Featured Artists</p></div>
+      <div class="artist-strip" id="artist-strip" role="list"></div>
+    </section>
 
-    <div class="rank-section-head rank-section-head--first">
-      <p class="section-title">📈 Trending Now</p>
-      <button type="button" class="see-all" id="trending-more" hidden>See all →</button>
-    </div>
-    <div class="trend-list" id="trending-list"></div>
+    <section class="bsec bsec--half" aria-label="Trending now">
+      <div class="bsec-head rank-section-head rank-section-head--first">
+        ${ICO.trend}<p class="section-title">Trending Now</p>
+        <button type="button" class="see-all" id="trending-more" hidden>See all →</button>
+      </div>
+      <div class="trend-list" id="trending-list"></div>
+    </section>
 
-    <div id="recent-section" class="rail-hidden">
-      <div class="rank-section-head"><p class="section-title">🕘 Recently played</p></div>
+    <div id="recent-section" class="bsec rail-hidden">
+      <div class="bsec-head rank-section-head">${ICO.clock}<p class="section-title">Recently played</p></div>
       <div class="rank-scroll" id="recent-list"></div>
     </div>
 
-    <div class="rank-section-head">
-      <p class="section-title">🔥 Top Downloads</p>
-      <button type="button" class="see-all" data-target="top-downloads-list">See all →</button>
-    </div>
-    <div class="rank-scroll" id="top-downloads-list"></div>
+    <section class="bsec bsec--half" aria-label="Top downloads">
+      <div class="bsec-head rank-section-head">
+        ${ICO.download}<p class="section-title">Top Downloads</p>
+        <button type="button" class="see-all" data-target="top-downloads-list">See all →</button>
+      </div>
+      <div class="rank-scroll" id="top-downloads-list"></div>
+    </section>
   </div>
 
-  <div class="feed-head"><p class="section-title" id="feed-title">Latest music</p></div>
+  <div class="feed-head">${ICO.music}<p class="section-title" id="feed-title">Latest music</p></div>
   <div id="artist-filter-pill"></div>
   <div class="grid" id="grid" aria-live="polite"></div>
   <button type="button" id="load-more-btn" class="hidden">Load more</button>
